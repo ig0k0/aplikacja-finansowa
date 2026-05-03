@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: /app/data/app.db
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env before starting}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+      BACKUP_DESTINATION: /app/backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-}
+      SEED_USER_1_LOGIN: ${SEED_USER_1_LOGIN:-}
+      SEED_USER_1_DISPLAY_NAME: ${SEED_USER_1_DISPLAY_NAME:-}
+      SEED_USER_1_PASSWORD: ${SEED_USER_1_PASSWORD:-}
+      SEED_USER_2_LOGIN: ${SEED_USER_2_LOGIN:-}
+      SEED_USER_2_DISPLAY_NAME: ${SEED_USER_2_DISPLAY_NAME:-}
+      SEED_USER_2_PASSWORD: ${SEED_USER_2_PASSWORD:-}
+      AI_MODE: ${AI_MODE:-disabled}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+    volumes:
+      - app-data:/app/data
+      - ./backups:/app/backups
+    restart: unless-stopped
+
+volumes:
+  app-data:
