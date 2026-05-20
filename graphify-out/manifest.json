@@ -19,9 +19,17 @@
     "mtime": 1777670924.1906753,
     "hash": "e6dfe85148ae62cfd624fb15c6b32832"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/migrations/0010_login_rate_limit.sql": {
+    "mtime": 1779284567.669638,
+    "hash": "ede2fcb2a96d24c40b55e1f2e319afd2"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/migrations/0008_totp.sql": {
     "mtime": 1777672024.85822,
     "hash": "ce268464e3b5fbac7c3b107d77f4e868"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/migrations/0009_pricing.sql": {
+    "mtime": 1779284338.7332098,
+    "hash": "079e004e44e452befba87687fb9fd305"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/migrations/0003_imports.sql": {
     "mtime": 1777835903.4649458,
@@ -47,6 +55,10 @@
     "mtime": 1777671522.4007738,
     "hash": "c42d99b0a200f5607cbb697dd430b93d"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/middleware.ts": {
+    "mtime": 1779284590.1435504,
+    "hash": "836049caf78427e78041d81933b3e3b9"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/layout.tsx": {
     "mtime": 1777835903.4649613,
     "hash": "fcfe91d02e7616df9e36e88f41ead649"
@@ -55,13 +67,17 @@
     "mtime": 1777667414.1538727,
     "hash": "da2d643df1b545cd91e0732bb5a208e4"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/insights/category-expense-trend-chart.tsx": {
+    "mtime": 1779283360.8147402,
+    "hash": "432aac95080348213dbf9597679a818d"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/insights/monthly-trend-chart.tsx": {
     "mtime": 1777835903.4352198,
     "hash": "0b31d70acb8a635ae59f829a15762dde"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/insights/page.tsx": {
-    "mtime": 1777835903.465055,
-    "hash": "f218be867aa9d203463dfb56e4426d08"
+    "mtime": 1779283366.567403,
+    "hash": "ce988e816c6096a7702e3d8a208c59ba"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/insights/export/route.ts": {
     "mtime": 1777670772.979738,
@@ -70,6 +86,14 @@
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/insights/export/pdf/route.ts": {
     "mtime": 1777671425.2614255,
     "hash": "1540df7e3ab5ddccd0eaefe925356393"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/settings/ai-memory/actions.ts": {
+    "mtime": 1779284783.7787507,
+    "hash": "6c7cc5790ca10ea84b0c7c53bf31b5f3"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/settings/ai-memory/page.tsx": {
+    "mtime": 1779284800.273757,
+    "hash": "59c97746ca950f132a9484009b914f40"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/settings/security/actions.ts": {
     "mtime": 1777835903.512189,
@@ -80,20 +104,20 @@
     "hash": "01b3e0253ee0254ba846e97cec6b1ddf"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/imports/actions.ts": {
-    "mtime": 1777835903.5125413,
-    "hash": "12e5d5af0962e512462950237d568ccc"
+    "mtime": 1779282721.9136345,
+    "hash": "0f0057cdb02d38580d60a03c7844f6eb"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/imports/page.tsx": {
-    "mtime": 1777835903.4493718,
-    "hash": "a6ab87d6d12638f9e8c3a0aa3d8a760c"
+    "mtime": 1779284129.6261752,
+    "hash": "b77e207b53908987c9f6defe23a7d2ae"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/dashboard/actions.ts": {
     "mtime": 1777835903.4357085,
     "hash": "58619029da079845a12a024fded326e3"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/dashboard/page.tsx": {
-    "mtime": 1777835903.5168393,
-    "hash": "00087573cb22fc8fc9625c65803a3fa7"
+    "mtime": 1779284811.0611684,
+    "hash": "c2e487f6b75a48182c22f8222881d115"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/transactions/actions.ts": {
     "mtime": 1777835903.4322202,
@@ -112,16 +136,20 @@
     "hash": "6fcaa56c2c5ae63406acda34e929a19e"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/review/page.tsx": {
-    "mtime": 1777835903.5257757,
-    "hash": "efde5d2576f2978911092c3627442537"
+    "mtime": 1779284812.8017771,
+    "hash": "ae44a7784969ea263dbc42849311b5c9"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/api/health/route.ts": {
+    "mtime": 1779284590.6335778,
+    "hash": "c28e771163938aa9d5bd77a3130a1739"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/login/actions.ts": {
-    "mtime": 1777835903.5219266,
-    "hash": "3b0604a9647127b87ddb1a893979b234"
+    "mtime": 1779284600.4005392,
+    "hash": "7bb611aeeb14be8d5c0d388f09d5aab1"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/login/page.tsx": {
-    "mtime": 1777667418.157133,
-    "hash": "157017c7b64dd623cd30337763761a7a"
+    "mtime": 1779284625.6419878,
+    "hash": "3fedb94cf1935b56ea979fbdf9ae0a05"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/login/totp/actions.ts": {
     "mtime": 1777835903.468449,
@@ -144,16 +172,48 @@
     "hash": "79c5ba0ac1fa06a29d32ad6cad27c99d"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/investments/actions.ts": {
-    "mtime": 1777835903.516934,
-    "hash": "68d76709742805d64407a5b8abfa7cf6"
+    "mtime": 1779284405.3969607,
+    "hash": "c576622699678c0a8af1f12a7810b7b7"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/investments/page.tsx": {
-    "mtime": 1777835903.500039,
-    "hash": "83f6998d755045efc1161d31b63f7990"
+    "mtime": 1779284435.4550898,
+    "hash": "21c01ae958acf6d15c4b361fbc0f0b3a"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/parse-file.ts": {
-    "mtime": 1777835903.5126216,
-    "hash": "fa3361dda1c4eca02ffb219e5ecb403d"
+    "mtime": 1779284113.7321682,
+    "hash": "1af417a819df541f72c4a30c80dceb5e"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/zen-csv-table.ts": {
+    "mtime": 1779284106.5290942,
+    "hash": "1ed55830ba0a258834b44d25ef03c9db"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/bank-parsers/pko-csv.ts": {
+    "mtime": 1779283335.1217632,
+    "hash": "1beb6a294424b8120699cece37e3c2df"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/bank-parsers/zen-csv.ts": {
+    "mtime": 1779284127.6295607,
+    "hash": "f6020dfba90e5db36575aee403933fb6"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/bank-parsers/shared.ts": {
+    "mtime": 1779283326.7456105,
+    "hash": "4f3d0fd7e4860813af62ebf5133598e0"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/bank-parsers/mbank-csv.ts": {
+    "mtime": 1779283329.2351243,
+    "hash": "127eee89751d0fd9149d212a155539dd"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/bank-parsers/types.ts": {
+    "mtime": 1779284109.5191538,
+    "hash": "e43cacd44117552d9fd2a9a394587db5"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/bank-parsers/index.ts": {
+    "mtime": 1779284111.3532577,
+    "hash": "cbdbf88370293d132d19c095c9f716dd"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/imports/bank-parsers/revolut-csv.ts": {
+    "mtime": 1779283332.1203063,
+    "hash": "fa4fac9e96c77b1755cefe6d1d7d525d"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/ai/openai-compatible.ts": {
     "mtime": 1777835903.483545,
@@ -168,8 +228,8 @@
     "hash": "90908f84b0e26dde011dcd5cd1d9df57"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/scripts/verify-foundation.ts": {
-    "mtime": 1777835903.495921,
-    "hash": "c3e899f97d9aff74cd1e2e485886a30e"
+    "mtime": 1779284661.305169,
+    "hash": "7862187c8512264700c3a2a794fe4f3a"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/scripts/scheduled-backup.ts": {
     "mtime": 1777835903.4587734,
@@ -199,25 +259,41 @@
     "mtime": 1777835903.4959052,
     "hash": "70ff649134c0898bfc4ec2c28cf39680"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/lib/client-ip.ts": {
+    "mtime": 1779284569.6181612,
+    "hash": "1267116e52263276eaa0aaabefd096e0"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/lib/session.ts": {
-    "mtime": 1777667411.3470962,
-    "hash": "91100955e3d8e87afa83dd70b0f27790"
+    "mtime": 1779284592.1983712,
+    "hash": "b74dc3672fffaa9813ceac343f733b02"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/lib/login-rate-limit.ts": {
+    "mtime": 1779284585.487901,
+    "hash": "4bcc5802da8c93451d2b1c71d7ad6571"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/lib/cookie-security.ts": {
+    "mtime": 1779284586.602234,
+    "hash": "c3e037aa2a5292bdb227d27edea6c979"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/lib/time.ts": {
     "mtime": 1777666215.504575,
     "hash": "93556bab067beaa5dfc468a0243556a1"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/schema.ts": {
-    "mtime": 1777835903.52185,
-    "hash": "973b2567863e58794247c3ecb98e9d01"
+    "mtime": 1779284609.6178684,
+    "hash": "ad883b63d4bf35b9cccee23775282ab9"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/migrate.ts": {
     "mtime": 1777667350.2397392,
     "hash": "a24dd05adc9084f789723cbeb0df68f0"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/investment-prices.ts": {
+    "mtime": 1779284386.2542958,
+    "hash": "2667a0ff34c845f52640ca0af36de383"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/analytics.ts": {
-    "mtime": 1777835903.4488437,
-    "hash": "33d4d242b1366386dcacc367efffd1d2"
+    "mtime": 1779283349.498354,
+    "hash": "3eafb428d96e6e5cfc3fbc291cc8d29d"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/ai-suggestions.ts": {
     "mtime": 1777835903.4649057,
@@ -255,6 +331,10 @@
     "mtime": 1777835903.458587,
     "hash": "6bab61b564e3360553c0b1b07a851a44"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/fx-rates.ts": {
+    "mtime": 1779284408.956842,
+    "hash": "aca92b45dd50c46380e49e3759b2e1c9"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/users.ts": {
     "mtime": 1777672060.8179753,
     "hash": "727351a5872ca3005d6affba69539bc2"
@@ -264,12 +344,12 @@
     "hash": "4eed9c9b7ea661b51f56acbd6dd27eb2"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/investments.ts": {
-    "mtime": 1777835903.5218484,
-    "hash": "1c72c624d188be9f77210435af4fe236"
+    "mtime": 1779284392.2188084,
+    "hash": "950f4e1a0b8d7527c57ee146e55f671b"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/correction-memory.ts": {
-    "mtime": 1777835903.530049,
-    "hash": "7bf2998a4d36c23d533d43ae8718db35"
+    "mtime": 1779284776.4192965,
+    "hash": "dd198973529854e9734d980aa3cac8c1"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/db/totp-login.ts": {
     "mtime": 1777672055.6975098,
@@ -291,37 +371,61 @@
     "mtime": 1777835903.4342914,
     "hash": "43af98629c5b84022fb71698ebfb4538"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/domain/pricing.ts": {
+    "mtime": 1779284353.8182838,
+    "hash": "a5f9fefe1d61207d508e64b7cabcf1b6"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/domain/imports.ts": {
-    "mtime": 1777835903.435699,
-    "hash": "b5a18c47c864f6f7cffd64224bfb37f0"
+    "mtime": 1779284121.1416037,
+    "hash": "a800949c0ffb6b26c427f277bed45931"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/domain/transactions.ts": {
     "mtime": 1777835903.5300488,
     "hash": "ac1af784bf28f823960dd223405e49b0"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/domain/investments.ts": {
-    "mtime": 1777835903.4329953,
-    "hash": "a6ba0526b79a4f3347d15410d740c71d"
+    "mtime": 1779284389.1357145,
+    "hash": "986f1d0235152dd833fd3efe5336a5f6"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/domain/category-template.ts": {
     "mtime": 1777666238.83755,
     "hash": "c9eb4368f7a86931f19f5430ad0a142b"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/domain/correction-memory.ts": {
+    "mtime": 1779284765.4606252,
+    "hash": "e9ebb1f7bfbf3c8b1e39d1df06b83dd1"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/pricing/nbp.ts": {
+    "mtime": 1779284358.938133,
+    "hash": "eb4478149606714a1d5a2265151b797e"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/pricing/stooq.ts": {
+    "mtime": 1779284366.3415227,
+    "hash": "342c52a6a9df5ae6a1632e8f394225ab"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/README.md": {
-    "mtime": 1777835903.5467265,
-    "hash": "2d637af9ae2ec94fd48419d33ded75c9"
+    "mtime": 1779284831.91386,
+    "hash": "8d43dfa8d6200f2a90a80d7e3ead8f45"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docker-compose.yml": {
     "mtime": 1777835903.4496403,
     "hash": "c7671195aba1963be9ce8b36694d6c2b"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/deploy/README.md": {
+    "mtime": 1779284620.0246952,
+    "hash": "f7a1876ce79066f88864042a167a5914"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/deploy/docker-compose.vps.yml": {
+    "mtime": 1779284626.637349,
+    "hash": "5385c596806225a17cb02cea24751b46"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/00_PROJECT_OVERVIEW.md": {
-    "mtime": 1777835903.5126102,
-    "hash": "d176c6f6a7e2afa926fdf338cfa13eb7"
+    "mtime": 1779284658.2142642,
+    "hash": "b84d0605af23722fe981044dc714c4a3"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/10_ROADMAP.md": {
-    "mtime": 1777835903.512523,
-    "hash": "d8964096e5cd1d3ee3c9ee4a1980f1d2"
+    "mtime": 1779284834.8120496,
+    "hash": "045954c5c378de40d9001abd4e70dc76"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/05_DATA_MODEL.md": {
     "mtime": 1777835903.4960554,
@@ -336,8 +440,8 @@
     "hash": "37d5d3e852ef093bbcc772630924bdbd"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/09_DEPLOYMENT_AND_OPERATIONS.md": {
-    "mtime": 1777835903.530069,
-    "hash": "c2f6500d6bf59c3cf80ca28aec20ba8a"
+    "mtime": 1779284657.0163527,
+    "hash": "058a3e836236a997d821652e6f6ef07e"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/08_SECURITY_AND_PRIVACY.md": {
     "mtime": 1777835903.5080633,
@@ -348,8 +452,8 @@
     "hash": "22c3ef758e90c5e7439206f40d54456e"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/04_ARCHITECTURE.md": {
-    "mtime": 1777835903.4571998,
-    "hash": "98972a9b4f1e21b3aeb9d941a672416c"
+    "mtime": 1779284666.286905,
+    "hash": "c5a99a19051af72e6943262cd449e18d"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/07_AI_CATEGORIZATION.md": {
     "mtime": 1777665597.5497663,

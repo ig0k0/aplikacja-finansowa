@@ -4,7 +4,7 @@ Data dokumentu: 2026-05-01
 
 ## Postep wzgledem roadmapy
 
-**Punkt zatrzymania (2026-05-01):** w kodzie zamkniete sa **Etap 0–6 (MVP)**. **Etap 7 (analityka i rekomendacje) nie jest wdrozony** — przy kontynuacji w nowym czacie zacznij od sekcji *Punkt zatrzymania pracy* w `docs/10_ROADMAP.md`.
+**Punkt zatrzymania (2026-05-20):** Etapy **0–8** + glowny **backlog** (parsery bankow, wykres kategorii, ceny PLN, VPS/HTTPS MVP) sa w kodzie. Rejestr: `docs/10_ROADMAP.md` → *Rejestr postepu backlogu*.
 
 Na **2026-05-01** obejmuje to m.in. inwestycje (`/investments`, strategia, operacje), wczesniejsze moduly zgodnie z tabela *Stan implementacji* w `docs/10_ROADMAP.md`.
 

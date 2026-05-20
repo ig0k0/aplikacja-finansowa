@@ -42,7 +42,12 @@ npm install
 cp .env.example .env.local
 ```
 
-3. Ustaw w `.env.local` hasla dla `SEED_USER_1_PASSWORD` i `SEED_USER_2_PASSWORD`.
+3. Ustaw w `.env.local` (minimum do logowania i seeda):
+
+   - `SESSION_SECRET` — dowolny dlugi losowy ciag (np. `openssl rand -hex 32`)
+   - `SEED_USER_1_PASSWORD` i `SEED_USER_2_PASSWORD` — hasla do dwoch kont testowych
+
+   Pozostale zmienne z `.env.example` sa opcjonalne (AI, backup, VPS).
 
 4. Utworz baze i dwa lokalne konta:
 
@@ -56,7 +61,19 @@ npm run db:seed
 npm run dev
 ```
 
-Aplikacja bedzie dostepna pod `http://localhost:3000`.
+Aplikacja bedzie dostepna pod `http://localhost:3000`. Logowanie: loginy z `.env.example` (`SEED_USER_1_LOGIN` / `SEED_USER_2_LOGIN`) i hasla ustawione w kroku 3.
+
+**Pamiec korekt AI:** `/settings/ai-memory` (reguly z kolejki `/review` lub recznie).
+
+### Docker (opcjonalnie)
+
+```bash
+cp .env.example .env
+# Uzupelnij SESSION_SECRET i hasla SEED_USER_* w pliku .env
+docker compose up --build
+```
+
+W kontenerze uruchom seed (jednorazowo): `docker compose exec app npm run db:seed`, potem `http://localhost:3000`.
 
 ## Weryfikacja Fundamentu
 

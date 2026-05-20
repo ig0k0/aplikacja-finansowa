@@ -15,7 +15,15 @@ type ImportsPageProps = {
     duplicates?: string;
     failed?: string;
     preset?: string;
+    parser?: string;
   }>;
+};
+
+const bankParserLabels: Record<string, string> = {
+  mbank_csv: "mBank CSV",
+  revolut_csv: "Revolut CSV",
+  pko_csv: "PKO BP CSV",
+  zen_csv: "ZEN CSV",
 };
 
 type NormalizedPreview = {
@@ -74,12 +82,19 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
           bledy: {params.failed ?? 0}.
         </p>
       ) : null}
+      {params.parser && bankParserLabels[params.parser] ? (
+        <p className="card" style={{ borderColor: "#93c5fd" }}>
+          Wykryto format <strong>{bankParserLabels[params.parser]}</strong> — zastosowano automatyczne
+          mapowanie kolumn (mozesz je poprawic przy kolejnym imporcie).
+        </p>
+      ) : null}
 
       <section className="card" style={{ marginBottom: 24 }}>
         <h2>Wgraj plik i podaj mapowanie</h2>
         <p className="muted">
-          Szablony ponizej to <strong>tylko przykladowe nazwy kolumn</strong> — nie sa automatycznymi parserami bankow.
-          Zawsze sprawdz naglowki w swoim pliku. PDF: wykrywanie tabel / tekst. Zdjecie paragonu (PNG, JPEG, WebP): OCR
+          Dla CSV <strong>ZEN, mBank, Revolut i PKO BP</strong> z typowymi naglowkami aplikacja moze automatycznie
+          wykryc mapowanie po wgraniu pliku (zostaw puste pola kolumn lub uzupelnij tylko kategorie). Szablony ponizej to nadal
+          reczne przykladowe nazwy — sprawdz naglowki w swoim pliku. PDF: wykrywanie tabel / tekst. Zdjecie paragonu (PNG, JPEG, WebP): OCR
           jezyka polskiego (Tesseract), potem ta sama heurystyka kolumn co przy PDF — jakosc zalezy od zdjecia.
           Legacy XLS jest odrzucany.
         </p>

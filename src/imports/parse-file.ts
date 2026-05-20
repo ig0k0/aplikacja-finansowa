@@ -2,6 +2,7 @@ import { parse } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
 import type { ParsedImportFile } from "../domain/imports";
+import { extractZenCsvTable } from "./zen-csv-table";
 
 function normalizeCell(value: unknown) {
   if (value instanceof Date) {
@@ -55,6 +56,12 @@ export async function parseImportFile(file: File): Promise<ParsedImportFile> {
       skipEmptyLines: true,
       trim: true,
     }) as unknown[][];
+
+    const zenTable = extractZenCsvTable(rows);
+
+    if (zenTable) {
+      return rowsToObjects(zenTable);
+    }
 
     return rowsToObjects(rows);
   }

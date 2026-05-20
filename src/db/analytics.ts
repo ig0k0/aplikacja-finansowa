@@ -66,6 +66,96 @@ export function summarizeRollingMonthsForUser(
   return result;
 }
 
+export type CategoryExpenseMonthPoint = {
+  month: string;
+  spentPlnMinor: number;
+};
+
+export type CategoryExpenseTrendSeries = {
+  categoryId: string | null;
+  categoryName: string;
+  points: CategoryExpenseMonthPoint[];
+};
+
+/** Wydatki w top N kategoriach (wg miesiaca koncowego) w oknie `monthCount` miesiecy. */
+export function summarizeTopCategoryExpenseTrends(
+  userId: string,
+  endMonth: string,
+  monthCount = 12,
+  topN = 5,
+): CategoryExpenseTrendSeries[] {
+  const topCategories = summarizeExpensesByCategoryForMonth(userId, endMonth)
+    .filter((row) => row.spentPlnMinor > 0)
+    .slice(0, topN);
+
+  if (topCategories.length === 0) {
+    return [];
+  }
+
+  const startMonth = addCalendarMonths(endMonth, -(monthCount - 1));
+  const months: string[] = [];
+  let cur = startMonth;
+
+  for (let i = 0; i < monthCount; i++) {
+    months.push(cur);
+    cur = addCalendarMonths(cur, 1);
+  }
+
+  const { start, end } = lookbackInclusiveEndMonth(endMonth, monthCount);
+  const topKeys = new Set(topCategories.map((row) => row.categoryId ?? "__none__"));
+
+  const aggregated = db
+    .select({
+      categoryId: transactions.categoryId,
+      month: sql<string>`strftime('%Y-%m', ${transactions.transactionDate})`,
+      spentPlnMinor: sql<number>`coalesce(sum(${transactions.amountPlnMinor}), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.type, "expense"),
+        gte(transactions.transactionDate, start),
+        lte(transactions.transactionDate, end),
+      ),
+    )
+    .groupBy(transactions.categoryId, sql`strftime('%Y-%m', ${transactions.transactionDate})`)
+    .all();
+
+  const spentByCategoryMonth = new Map<string, Map<string, number>>();
+
+  for (const row of aggregated) {
+    const key = row.categoryId ?? "__none__";
+
+    if (!topKeys.has(key)) {
+      continue;
+    }
+
+    let monthMap = spentByCategoryMonth.get(key);
+
+    if (!monthMap) {
+      monthMap = new Map();
+      spentByCategoryMonth.set(key, monthMap);
+    }
+
+    monthMap.set(row.month, row.spentPlnMinor);
+  }
+
+  return topCategories.map((category) => {
+    const key = category.categoryId ?? "__none__";
+    const monthMap = spentByCategoryMonth.get(key);
+
+    return {
+      categoryId: category.categoryId,
+      categoryName: category.categoryName ?? "Bez kategorii",
+      points: months.map((month) => ({
+        month,
+        spentPlnMinor: monthMap?.get(month) ?? 0,
+      })),
+    };
+  });
+}
+
 export function compareExpenseCategoriesMonthOverMonth(userId: string, month: string): CategoryMoMRow[] {
   const prevMonth = getPreviousMonthLabel(month);
   const currentRows = summarizeExpensesByCategoryForMonth(userId, month);

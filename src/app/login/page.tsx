@@ -19,6 +19,10 @@ function getErrorMessage(error?: string) {
     return "Niepoprawny login lub haslo.";
   }
 
+  if (error === "rate_limited") {
+    return "Zbyt wiele nieudanych prob logowania. Sprobuj ponownie za ok. 15 minut.";
+  }
+
   return null;
 }
 

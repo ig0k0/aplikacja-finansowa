@@ -31,11 +31,39 @@ function normalizeText(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+const ENGLISH_MONTHS: Record<string, string> = {
+  jan: "01",
+  feb: "02",
+  mar: "03",
+  apr: "04",
+  may: "05",
+  jun: "06",
+  jul: "07",
+  aug: "08",
+  sep: "09",
+  oct: "10",
+  nov: "11",
+  dec: "12",
+};
+
 function parseDate(value: string) {
   const trimmed = value.trim();
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
+  }
+
+  const englishMatch = /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/.exec(trimmed);
+
+  if (englishMatch) {
+    const [, day, monthLabel, year] = englishMatch;
+    const month = ENGLISH_MONTHS[monthLabel.toLowerCase()];
+
+    if (!month) {
+      throw new Error(`Nieprawidlowa data: ${value}`);
+    }
+
+    return `${year}-${month}-${day.padStart(2, "0")}`;
   }
 
   const dotMatch = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(trimmed);
@@ -71,6 +99,28 @@ function normalizeAmount(value: string) {
   return parseAmountToMinor(withoutSign);
 }
 
+function inferTransactionType(amountRaw: string, defaultType: TransactionType): TransactionType {
+  const trimmed = amountRaw.trim();
+
+  if (trimmed.startsWith("-") || trimmed.startsWith("(")) {
+    return "expense";
+  }
+
+  if (trimmed.startsWith("+")) {
+    return "income";
+  }
+
+  const numeric = Number(
+    trimmed.replace(/\s/g, "").replace(",", ".").replace(/[^\d.-]/g, ""),
+  );
+
+  if (!Number.isNaN(numeric) && numeric !== 0) {
+    return numeric < 0 ? "expense" : "income";
+  }
+
+  return defaultType;
+}
+
 function createDedupeKey(input: {
   userId: string;
   date: string;
@@ -87,8 +137,9 @@ export function normalizeImportRow(
   rawRow: Record<string, string>,
   mapping: ImportMapping,
 ): NormalizedImportRow {
+  const amountRaw = rawRow[mapping.amountColumn] ?? "";
   const transactionDate = parseDate(rawRow[mapping.dateColumn] ?? "");
-  const amountMinor = normalizeAmount(rawRow[mapping.amountColumn] ?? "");
+  const amountMinor = normalizeAmount(amountRaw);
   const description = normalizeText(rawRow[mapping.descriptionColumn] ?? "");
   const merchantName = mapping.merchantColumn
     ? normalizeText(rawRow[mapping.merchantColumn] ?? "")
@@ -103,7 +154,7 @@ export function normalizeImportRow(
     amountMinor,
     description,
     merchantName: merchantName || null,
-    type: mapping.defaultType,
+    type: inferTransactionType(amountRaw, mapping.defaultType),
     categoryId: mapping.categoryId,
     dedupeKey: createDedupeKey({ userId, date: transactionDate, amountMinor, description }),
   };

@@ -7,10 +7,12 @@ import {
   listHeuristicRecurringCandidates,
   summarizeRecurringExpensesByCategoryForMonth,
   summarizeRollingMonthsForUser,
+  summarizeTopCategoryExpenseTrends,
   totalRecurringExpensesForMonth,
 } from "@/db/analytics";
 import { formatCurrencyMinor } from "@/lib/format";
 import { requireUser } from "@/lib/session";
+import { CategoryExpenseTrendChart } from "./category-expense-trend-chart";
 import { MonthlyTrendChart } from "./monthly-trend-chart";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +45,10 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
 
   const trendPoints = summarizeRollingMonthsForUser(user.id, month, 12);
   const hasTrendData = trendPoints.some((p) => p.incomePlnMinor > 0 || p.expensePlnMinor > 0);
+  const categoryTrendSeries = summarizeTopCategoryExpenseTrends(user.id, month, 12, 5);
+  const hasCategoryTrendData = categoryTrendSeries.some((series) =>
+    series.points.some((point) => point.spentPlnMinor > 0),
+  );
 
   const recommendations: string[] = [];
   for (const row of momRows.filter((r) => r.deltaPlnMinor > 0).slice(0, 5)) {
@@ -112,6 +118,19 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
           <MonthlyTrendChart points={trendPoints} />
         ) : (
           <p className="muted">Brak transakcji w tym oknie — wykres pojawi sie po wiekszej historii.</p>
+        )}
+      </section>
+
+      <section className="card" style={{ marginBottom: 24 }}>
+        <h2 style={{ marginTop: 0 }}>Top kategorie wydatkow (12 miesiecy)</h2>
+        <p className="muted">
+          Piec kategorii z najwyzszymi wydatkami w <strong>{month}</strong> — trend w ostatnich 12 pelnych
+          miesiacach kalendarzowych konczacych sie na tym miesiacu.
+        </p>
+        {hasCategoryTrendData ? (
+          <CategoryExpenseTrendChart series={categoryTrendSeries} />
+        ) : (
+          <p className="muted">Brak wydatkow w kategoriach w tym oknie.</p>
         )}
       </section>
 

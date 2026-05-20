@@ -30,6 +30,9 @@ export default async function DashboardPage() {
           <Link className="button button-secondary" href="/settings/security">
             Bezpieczenstwo
           </Link>
+          <Link className="button button-secondary" href="/settings/ai-memory">
+            Pamiec AI
+          </Link>
           <form action={logoutAction}>
             <button className="button button-secondary" type="submit">
               Wyloguj

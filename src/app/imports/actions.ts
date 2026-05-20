@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { importMappingSchema, normalizeImportRow } from "@/domain/imports";
 import { requireUser } from "@/lib/session";
+import { detectBankImportMapping } from "@/imports/bank-parsers";
 import { parseImportFile } from "@/imports/parse-file";
 
 function redirectWithError(message: string): never {
@@ -23,31 +24,57 @@ export async function createImportPreviewAction(formData: FormData) {
     redirectWithError("Wybierz plik CSV, XLSX, PDF albo zdjecie (PNG, JPEG, WebP) do OCR.");
   }
 
-  const mapping = importMappingSchema.safeParse({
-    dateColumn: String(formData.get("dateColumn") ?? ""),
-    amountColumn: String(formData.get("amountColumn") ?? ""),
-    descriptionColumn: String(formData.get("descriptionColumn") ?? ""),
-    merchantColumn: String(formData.get("merchantColumn") ?? ""),
-    categoryId: String(formData.get("categoryId") ?? ""),
-    defaultType: String(formData.get("defaultType") ?? ""),
-  });
-
-  if (!mapping.success) {
-    redirectWithError(mapping.error.issues[0]?.message ?? "Niepoprawne mapowanie kolumn.");
-  }
-
   let batchId: string;
+  let detectedParserId: string | undefined;
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = await parseImportFile(file);
+    const detected = detectBankImportMapping(parsed.headers, file.name);
+
+    const mappingInput = {
+      dateColumn: String(formData.get("dateColumn") ?? ""),
+      amountColumn: String(formData.get("amountColumn") ?? ""),
+      descriptionColumn: String(formData.get("descriptionColumn") ?? ""),
+      merchantColumn: String(formData.get("merchantColumn") ?? ""),
+      categoryId: String(formData.get("categoryId") ?? ""),
+      defaultType: String(formData.get("defaultType") ?? ""),
+    };
+
+    if (detected) {
+      if (!mappingInput.dateColumn.trim()) {
+        mappingInput.dateColumn = detected.mapping.dateColumn;
+      }
+      if (!mappingInput.amountColumn.trim()) {
+        mappingInput.amountColumn = detected.mapping.amountColumn;
+      }
+      if (!mappingInput.descriptionColumn.trim()) {
+        mappingInput.descriptionColumn = detected.mapping.descriptionColumn;
+      }
+      if (!mappingInput.merchantColumn.trim() && detected.mapping.merchantColumn) {
+        mappingInput.merchantColumn = detected.mapping.merchantColumn;
+      }
+      detectedParserId = detected.id;
+    }
+
+    const mapping = importMappingSchema.safeParse(mappingInput);
+
+    if (!mapping.success) {
+      redirectWithError(mapping.error.issues[0]?.message ?? "Niepoprawne mapowanie kolumn.");
+    }
+
+    const sourceInstitutionRaw = String(formData.get("sourceInstitution") ?? "").trim();
+    const sourceInstitution =
+      sourceInstitutionRaw && sourceInstitutionRaw !== "generic"
+        ? sourceInstitutionRaw
+        : (detected?.sourceInstitution ?? sourceInstitutionRaw) || "generic";
     const { createImportPreview } = await import("@/db/imports");
     batchId = createImportPreview({
       userId: user.id,
       fileName: file.name,
       fileType: file.name.split(".").pop()?.toLowerCase() ?? "unknown",
       fileHash: fileHash(buffer),
-      sourceInstitution: String(formData.get("sourceInstitution") ?? "generic") || "generic",
+      sourceInstitution,
       mapping: mapping.data,
       rows: parsed.rows.map((row, index) => {
         try {
@@ -70,7 +97,9 @@ export async function createImportPreviewAction(formData: FormData) {
     redirectWithError(error instanceof Error ? error.message : "Nie udalo sie sparsowac pliku.");
   }
 
-  redirect(`/imports?batchId=${batchId}`);
+  const parserQuery = detectedParserId ? `&parser=${encodeURIComponent(detectedParserId)}` : "";
+
+  redirect(`/imports?batchId=${batchId}${parserQuery}`);
 }
 
 export async function confirmImportAction(formData: FormData) {

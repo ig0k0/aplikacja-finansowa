@@ -72,9 +72,14 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           <p className="muted">Weryfikacja kategorii</p>
           <h1 style={{ margin: 0 }}>Kolejka do recznej weryfikacji</h1>
         </div>
-        <Link className="button button-secondary" href="/dashboard">
-          Dashboard
-        </Link>
+        <div className="inline-form">
+          <Link className="button button-secondary" href="/settings/ai-memory">
+            Pamiec korekt
+          </Link>
+          <Link className="button button-secondary" href="/dashboard">
+            Dashboard
+          </Link>
+        </div>
       </header>
 
       {aiConfig.mode === "external" ? (

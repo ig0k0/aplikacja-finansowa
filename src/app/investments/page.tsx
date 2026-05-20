@@ -7,12 +7,14 @@ import {
   toOperationTypeLabel,
   type StrategyRulesV1,
 } from "@/domain/investments";
+import { quoteCurrencies } from "@/domain/pricing";
 import { formatCurrencyMinor, formatDate, todayInputValue } from "@/lib/format";
 import { requireUser } from "@/lib/session";
 import {
   addInvestmentOperationAction,
   createInvestmentAssetAction,
   deleteInvestmentAssetAction,
+  refreshInvestmentPricesAction,
   saveInvestmentStrategyAction,
 } from "./actions";
 
@@ -23,8 +25,17 @@ type InvestmentsPageProps = {
     error?: string;
     saved?: string;
     deleted?: string;
+    refreshed?: string;
+    skipped?: string;
+    failed?: string;
+    usd?: string;
+    rateDate?: string;
   }>;
 };
+
+function formatQuoteMinor(minor: number, currency: string) {
+  return `${(minor / 100).toFixed(2)} ${currency}`;
+}
 
 export default async function InvestmentsPage({ searchParams }: InvestmentsPageProps) {
   const user = await requireUser();
@@ -61,9 +72,16 @@ export default async function InvestmentsPage({ searchParams }: InvestmentsPageP
           <p className="muted">Etap 6 — MVP</p>
           <h1 style={{ margin: 0 }}>Inwestycje i majatek</h1>
         </div>
-        <Link className="button button-secondary" href="/dashboard">
-          Dashboard
-        </Link>
+        <div className="inline-form">
+          <form action={refreshInvestmentPricesAction}>
+            <button className="button" type="submit">
+              Odswiez ceny (PLN)
+            </button>
+          </form>
+          <Link className="button button-secondary" href="/dashboard">
+            Dashboard
+          </Link>
+        </div>
       </header>
 
       {params.error ? <p className="card error">{params.error}</p> : null}
@@ -75,6 +93,13 @@ export default async function InvestmentsPage({ searchParams }: InvestmentsPageP
       {params.deleted ? (
         <p className="card" style={{ borderColor: "#fde047" }}>
           Usunieto aktywo.
+        </p>
+      ) : null}
+      {params.refreshed !== undefined ? (
+        <p className="card" style={{ borderColor: "#93c5fd" }}>
+          Odswiezono ceny: <strong>{params.refreshed}</strong> pozycji (pominieto: {params.skipped ?? 0},
+          bledy: {params.failed ?? 0}). Kurs NBP USD/PLN: <strong>{params.usd}</strong>
+          {params.rateDate ? ` (${params.rateDate})` : null}. Wszystkie metryki portfela sa w PLN.
         </p>
       ) : null}
 
@@ -176,6 +201,20 @@ export default async function InvestmentsPage({ searchParams }: InvestmentsPageP
             </select>
           </label>
           <label className="field">
+            Waluta notowania
+            <select className="input" name="currency" defaultValue="USD">
+              {quoteCurrencies.map((currency) => (
+                <option key={currency} value={currency}>
+                  {currency}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Ilosc (opcjonalnie, do przeliczenia PLN)
+            <input className="input" name="quantity" inputMode="decimal" placeholder="np. 10" />
+          </label>
+          <label className="field">
             Wartosc rynkowa PLN (start)
             <input className="input" name="marketValue" inputMode="decimal" placeholder="0" />
           </label>
@@ -243,6 +282,10 @@ export default async function InvestmentsPage({ searchParams }: InvestmentsPageP
 
       <section className="card" style={{ marginBottom: 24 }}>
         <h2>Lista aktywow</h2>
+        <p className="muted">
+          Wartosci w tabeli sa w <strong>PLN</strong> (analiza i dashboard). Dla USD/EUR cena jednostkowa pochodzi ze
+          Stooq, kurs z tabeli NBP (USD i EUR). ETF/akcje/krypto z tickerem mozna odswiezyc przyciskiem u gory.
+        </p>
         {assets.length === 0 ? (
           <p className="muted">Brak pozycji. Dodaj np. pozycje typu Gotowka oraz ETF.</p>
         ) : (
@@ -252,9 +295,11 @@ export default async function InvestmentsPage({ searchParams }: InvestmentsPageP
                 <tr>
                   <th>Nazwa</th>
                   <th>Typ</th>
-                  <th>Wartosc</th>
-                  <th>Koszt</th>
-                  <th>Wynik</th>
+                  <th>Ilosc</th>
+                  <th>Cena / kurs</th>
+                  <th>Wartosc PLN</th>
+                  <th>Koszt PLN</th>
+                  <th>Wynik PLN</th>
                   <th></th>
                 </tr>
               </thead>
@@ -266,6 +311,21 @@ export default async function InvestmentsPage({ searchParams }: InvestmentsPageP
                       {a.ticker ? <p className="muted table-note">{a.ticker}</p> : null}
                     </td>
                     <td>{toAssetTypeLabel(a.type)}</td>
+                    <td>{a.quantity > 0 ? a.quantity : "—"}</td>
+                    <td>
+                      {a.lastQuotePriceMinor != null && a.lastQuoteCurrency ? (
+                        <>
+                          {formatQuoteMinor(a.lastQuotePriceMinor, a.lastQuoteCurrency)}
+                          {a.lastQuoteFxRate && a.lastQuoteCurrency !== "PLN" ? (
+                            <p className="muted table-note">
+                              1 {a.lastQuoteCurrency} = {a.lastQuoteFxRate.toFixed(4)} PLN
+                            </p>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                     <td>{formatCurrencyMinor(a.marketValuePlnMinor)}</td>
                     <td>{formatCurrencyMinor(a.costBasisPlnMinor)}</td>
                     <td>{formatCurrencyMinor(a.marketValuePlnMinor - a.costBasisPlnMinor)}</td>

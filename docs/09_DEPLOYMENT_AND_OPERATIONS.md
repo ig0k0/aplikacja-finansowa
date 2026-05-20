@@ -213,7 +213,19 @@ Scenariusze i reakcje:
 
 Pelniejsza lista **co zostalo do zrobienia w backlogu** oraz **plan weryfikacji recznej** (checklista przed releasem): `docs/10_ROADMAP.md` — sekcje **Backlog** i **Plan weryfikacji recznej**.
 
-## 14. Idac dalej
+## 14. VPS z HTTPS (Caddy)
 
-- **Produkt / roadmapa:** `docs/10_ROADMAP.md` (w tym backlog i weryfikacja reczna).
+Przyklad wdrozenia z reverse proxy i Let's Encrypt: katalog **`deploy/`** (`README.md`, `docker-compose.vps.yml`, `Caddyfile.example`).
+
+Zmienne w `.env` na VPS:
+
+- `TRUST_PROXY=1`
+- `COOKIE_SECURE=1`
+- `LOGIN_RATE_LIMIT_MAX=8` (opcjonalnie)
+
+Health check: `GET /api/health`.
+
+## 15. Idac dalej
+
+- **Produkt / roadmapa:** `docs/10_ROADMAP.md` (w tym [rejestr postepu backlogu](#rejestr-postepu-backlogu) i weryfikacja reczna).
 - **Decyzje architektoniczne:** `docs/11_DECISIONS.md`.

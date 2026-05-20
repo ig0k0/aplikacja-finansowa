@@ -22,6 +22,8 @@ export async function createInvestmentAssetAction(formData: FormData) {
     name: String(formData.get("name") ?? ""),
     ticker: String(formData.get("ticker") ?? ""),
     type: String(formData.get("type") ?? ""),
+    currency: String(formData.get("currency") ?? "PLN"),
+    quantity: String(formData.get("quantity") ?? ""),
     marketValue: String(formData.get("marketValue") ?? "").trim() || undefined,
     costBasis: String(formData.get("costBasis") ?? "").trim() || undefined,
   });
@@ -40,6 +42,8 @@ export async function createInvestmentAssetAction(formData: FormData) {
       name: parsed.data.name,
       ticker: parsed.data.ticker,
       type: parsed.data.type,
+      currency: parsed.data.currency,
+      quantity: parseQuantityDelta(parsed.data.quantity),
       marketValuePlnMinor: marketMinor,
       costBasisPlnMinor: costMinor,
     });
@@ -149,4 +153,44 @@ export async function deleteInvestmentAssetAction(formData: FormData) {
   revalidatePath("/investments");
   revalidatePath("/dashboard");
   redirect("/investments?deleted=1");
+}
+
+export async function refreshInvestmentPricesAction() {
+  const user = await requireUser();
+
+  let summary: Awaited<ReturnType<typeof import("@/db/investment-prices").refreshInvestmentPricesForUser>>;
+
+  try {
+    const { refreshInvestmentPricesForUser } = await import("@/db/investment-prices");
+    summary = await refreshInvestmentPricesForUser(user.id);
+  } catch (error) {
+    redirectWithError(
+      error instanceof Error ? error.message : "Nie udalo sie pobrac cen (sprawdz internet).",
+    );
+  }
+
+  const { recordAuditEvent } = await import("@/db/audit");
+  recordAuditEvent({
+    userId: user.id,
+    action: "investment_prices_refresh",
+    meta: {
+      updated: summary.updated,
+      skipped: summary.skipped,
+      failed: summary.failed.length,
+      rateDate: summary.rateDate,
+    },
+  });
+
+  revalidatePath("/investments");
+  revalidatePath("/dashboard");
+
+  const params = new URLSearchParams({
+    refreshed: String(summary.updated),
+    skipped: String(summary.skipped),
+    failed: String(summary.failed.length),
+    usd: summary.fxUsdPln.toFixed(4),
+    rateDate: summary.rateDate,
+  });
+
+  redirect(`/investments?${params.toString()}`);
 }

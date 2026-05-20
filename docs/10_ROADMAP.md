@@ -6,14 +6,13 @@ Data dokumentu: 2026-05-01
 
 ### Punkt zatrzymania pracy (ostatnia synchronizacja z kodem)
 
-**Data odniesienia: 2026-05-01.** Przy **zmianie czatu / kontekstu** traktuj ten fragment jako zrodlo prawdy o tym, co jest juz w repozytorium, a co nie.
+**Data odniesienia: 2026-05-20.** Przy **zmianie czatu / kontekstu** traktuj ten fragment oraz [Rejestr postepu backlogu](#rejestr-postepu-backlogu) jako zrodlo prawdy.
 
 | Co | Stan |
 | --- | --- |
-| **Zakonczone w kodzie (MVP)** | Etapy **0–7 (MVP)** — m.in. `/transactions`, import, `/review` + AI, backup i `/audit`, **`/investments`**, **`/insights`**. |
-| **Etap 8** | **Zakonczony (planowany zakres):** 2FA TOTP, PDF/OCR importu, szablony kolumn, wykres 12 mies., responsywnosc. **Poza zakresem Etapu 8:** dedykowane parsery per bank — [Backlog](#backlog). |
-| **Opcjonalne rozszerzenia** | **Poza roadmapa MVP:** glebsze wykresy na `/insights`; automatyczne ceny/kursy; wdrozenie produkcyjne na VPS z HTTPS. |
-| **Pierwszy nastepny krok (backlog)** | Wedlug priorytetu: parser dedykowany pod wybrany bank; kolejne metryki/wykresy; ceny aktywow; twarde utwardzenie dostepu z internetu. |
+| **Zakonczone w kodzie (MVP)** | Etapy **0–8** — pelny produkt self-hosted z [backlogiem](#backlog) w toku. |
+| **Backlog — zrobione i zweryfikowane** | Parsery bankow (ZEN, mBank, Revolut, PKO), wykres top kategorii, **ceny aktywow PLN** (NBP+Stooq), **utwardzenie VPS/HTTPS (MVP)** — patrz [rejestr](#rejestr-postepu-backlogu). |
+| **Pierwszy nastepny krok (backlog)** | Masowa akceptacja `/review`, UI pamieci korekt, E2E testy — lub rozszerzenia opcjonalne z sekcji Backlog. |
 
 **Aktualizacja tabeli etapow:** 2026-05-01.
 
@@ -22,7 +21,7 @@ Data dokumentu: 2026-05-01
 | 0. Doprecyzowanie przed kodem | **Zakonczony** | Dokumentacja w `docs/`, decyzje w `docs/11_DECISIONS.md`. |
 | 1. Fundament aplikacji | **Zakonczony** | Next.js, SQLite, Drizzle, Docker, logowanie, seed, dashboard z danymi rocznymi. |
 | 2. Transakcje reczne | **Zakonczony** | `/transactions`, budzety, `/reports/monthly`, `/reports/yearly`. |
-| 3. Import CSV/XLS/PDF/OCR | **Zakonczony (MVP)** | Widok `/imports`: CSV, XLSX, PDF, OCR obrazow (`pol`), mapowanie kolumn, **szablony nazw kolumn** (`import-presets`), podglad, deduplikacja. Legacy `.xls` odrzucony. Brak automatycznych parserow per bank. |
+| 3. Import CSV/XLS/PDF/OCR | **Zakonczony (MVP+)** | Neutralny import + **parsery bankow** (ZEN, mBank, Revolut, PKO). Legacy `.xls` odrzucony. |
 | 4. AI kategoryzacji | **Zakonczony (MVP)** | Endpoint OpenAI-compatible (`src/ai/openai-compatible.ts`), walidacja JSON (`src/domain/ai-categorization.ts`), progi z ENV, pamiec korekt (`user_correction_memory`), zapis sugestii (`ai_suggestions`), widok `/review`, opcja „Zapamietaj” przy zmianie kategorii. |
 | 5. Backup, restore, bezpieczenstwo | **Zakonczony (MVP)** | Szyfrowany backup CLI + **`npm run backup:scheduled`** (cron), retencja opcjonalna `BACKUP_RETENTION_DAYS`, naprawa `createEncryptedBackup` (osobne polaczenie SQLite). Audyt: `audit_events`, **`/audit`**. Google Drive: poza kodem (`rclone`). |
 | 6. Inwestycje i majatek netto | **Zakonczony (MVP)** | Tabele `investment_assets`, `investment_operations`, `investment_strategies`; widok **`/investments`**; operacje reczne (kupno, wycena, dywidenda, wplata/wyplata, sprzedaz); strategia z procentami i **sugestia podzialu** nadwyzki od bilansu roku; dashboard: suma wartosci portfela, koszt, P/L. |
@@ -134,7 +133,7 @@ Kryterium zakonczenia:
 
 Cel: zmniejszyc reczna prace przy kategoriach.
 
-**Implementacja (MVP, 2026-05-01):** dziala adapter HTTP do API zgodnego z OpenAI (`/v1/chat/completions`), tryb `AI_MODE=disabled|local|external`, progi `AI_CONFIDENCE_*`, kolejka `/review`, pamiec korekt przy zapisie kategorii (opcja „Zapamietaj”), tabele `ai_suggestions` i `user_correction_memory`. Nie zaimplementowano masowej akceptacji wielu transakcji naraz ani osobnego UI do edycji regul pamieci.
+**Implementacja (MVP, 2026-05-01):** dziala adapter HTTP do API zgodnego z OpenAI (`/v1/chat/completions`), tryb `AI_MODE=disabled|local|external`, progi `AI_CONFIDENCE_*`, kolejka `/review`, pamiec korekt przy zapisie kategorii (opcja „Zapamietaj”), tabele `ai_suggestions` i `user_correction_memory`, UI regul: `/settings/ai-memory`. Nie zaimplementowano masowej akceptacji wielu transakcji naraz.
 
 Zakres:
 
@@ -226,32 +225,45 @@ Kryterium zakonczenia (pelne):
 
 **Historyczna lista „po stabilizacji”** — wiele punktow jest juz w kodzie (m.in. PDF, OCR, 2FA, responsywnosc). Aktualne **otwarte** tematy: [Backlog](#backlog).
 
+## Rejestr postepu backlogu
+
+Odznaczenia po **kodzie + `npm run build` + `npm run verify:foundation`** (oraz test na `file_sample` dla ZEN). Reczna weryfikacja UI: [Plan weryfikacji recznej](#plan-weryfikacji-recznej).
+
+| Data | Zadanie | Status | Weryfikacja |
+| --- | --- | --- | --- |
+| 2026-05-20 | Parsery CSV: mBank, Revolut, PKO | **Zrobione** | `verify-foundation`, auto-mapowanie w `/imports` |
+| 2026-05-20 | Parser ZEN (`file_sample/Wyciąg z konta PLN.csv`) | **Zrobione** | 66 wierszy, daty EN, typ z znaku kwoty |
+| 2026-05-20 | Wykres top 5 kategorii na `/insights` | **Zrobione** | `summarizeTopCategoryExpenseTrends`, build OK |
+| 2026-05-20 | Ceny aktywow + kursy USD/EUR → **PLN** | **Zrobione** | NBP + Stooq, przycisk na `/investments`, migracja `0009_pricing` |
+| 2026-05-20 | VPS/HTTPS (MVP) | **Zrobione** | `middleware`, `/api/health`, limit logowania, `deploy/` + Caddy |
+| 2026-05-20 | UI pamieci korekt `/settings/ai-memory` | **Zrobione** | lista, dodawanie, edycja kategorii, usuwanie |
+
 ## Backlog
 
 Lista rzeczy **swiadomie poza zamknietym MVP i Etapem 8** albo wymagajacych osobnej iniciatywy. Priorytety ustalacie Wy — kolejnosc ponizej nie jest narzucona.
 
 ### Import i dane bankowe
 
-- **Automatyczne parsery** dla konkretnych bankow (format + testy na zanonimizowanych plikach, utrzymanie przy zmianach eksportow).
+- [x] **Automatyczne parsery** dla konkretnych bankow — **wdrozone:** ZEN, mBank, Revolut, PKO BP (`src/imports/bank-parsers`, `zen-csv-table`).
 - Opcjonalnie: **bezpieczny parser legacy `.xls`** (obecnie odrzucony na rzecz CSV/XLSX).
 
 ### Analityka i AI
 
-- **Kolejne wykresy / drill-down** na `/insights` (np. wybrane kategorie w czasie).
+- [x] **Kolejne wykresy / drill-down** na `/insights` — **MVP:** wykres top 5 kategorii (12 mies.). Dalej: drill-down po jednej kategorii.
 - **Masowa akceptacja** w kolejce `/review` (jesli nadal poza kodem).
-- **UI do edycji regul pamieci korekt** (`user_correction_memory`).
+- [x] **UI do edycji regul pamieci korekt** — `/settings/ai-memory` (lista, dodawanie, zmiana kategorii, usuwanie).
 - Rozszerzenia AI poza obecnym MVP (jasny zakres + limity kosztow).
 
 ### Inwestycje i majatek (por. tez „Poza MVP Etapu 6” w dokumencie)
 
-- **Automatyczne ceny** aktywow (API broker / zrodla zewnetrzne + polityka odswiezania).
-- **Automatyczne kursy walut** dla wielowalutowosci (jesli pojawi sie w modelu).
+- [x] **Automatyczne ceny** aktywow — **MVP:** Stooq + NBP, wartosc w **PLN** (`refreshInvestmentPricesForUser`).
+- [x] **Automatyczne kursy walut** — **MVP:** `fx_rates`, USD i EUR z NBP.
 - **Zaawansowany rebalancing** z historii brokerow.
 - **Powiazanie operacji inwestycyjnych z kontami bankowymi**.
 
 ### Bezpieczenstwo i wdrozenie
 
-- **Publiczny dostep** (VPS): reverse proxy, **HTTPS**, limitowanie prob logowania, naglowki bezpieczenstwa, aktualizacje — patrz `docs/09_DEPLOYMENT_AND_OPERATIONS.md`.
+- [x] **Publiczny dostep (VPS) — MVP:** `deploy/` (Caddy), naglowki, limit logowania, `COOKIE_SECURE` / `TRUST_PROXY`. **Recznie:** certyfikat/domena na serwerze.
 - Opcjonalnie: **integracja backupu z Google Drive** w aplikacji (vs recznie/rclone).
 
 ### Jakosc i utrzymanie
@@ -317,6 +329,7 @@ Checklista do przejscia **przed uznaniem instalacji za „sprawdzona”** albo p
 | --- | --- | --- |
 | F1 | Dodanie aktywa i operacji | Metryki na `/investments` i/lub dashboardzie sensowne. |
 | F2 | Strategia z procentami | Sugestia podzialu bez bledu przy typowych danych. |
+| F3 | **Odswiez ceny (PLN)** na `/investments` | Kurs NBP + ceny Stooq, wartosc portfela w PLN. |
 
 ### G. Backup, audyt
 
@@ -338,6 +351,8 @@ Checklista do przejscia **przed uznaniem instalacji za „sprawdzona”** albo p
 | --- | --- | --- |
 | I1 | `npm run build` | Sukces. |
 | I2 | `npm run lint` | Bez ostrzezen ponad limit. |
+| I3 | `GET /api/health` | JSON `{ status: "ok" }`. |
+| I4 | Limit logowania (opcjonalnie) | Po wielu blednych probach — komunikat `rate_limited`. |
 
 **Uwaga:** pelna lista funkcji jest w kodzie i w `docs/04_ARCHITECTURE.md`; ta checklista pokrywa **sciezki krytyczne**, nie kazdy przycisk.
 

@@ -37,6 +37,23 @@ export const loginTotpPending = sqliteTable(
   }),
 );
 
+export const loginAttemptFailures = sqliteTable(
+  "login_attempt_failures",
+  {
+    id: text("id").primaryKey(),
+    loginKey: text("login_key").notNull(),
+    ipHash: text("ip_hash").notNull(),
+    failedAt: text("failed_at").notNull(),
+  },
+  (table) => ({
+    lookupIdx: index("login_attempt_failures_lookup_idx").on(
+      table.loginKey,
+      table.ipHash,
+      table.failedAt,
+    ),
+  }),
+);
+
 export const sessions = sqliteTable(
   "sessions",
   {
@@ -294,6 +311,20 @@ export const importedRows = sqliteTable(
   }),
 );
 
+export const fxRates = sqliteTable(
+  "fx_rates",
+  {
+    rateDate: text("rate_date").notNull(),
+    currency: text("currency").notNull(),
+    plnPerUnit: real("pln_per_unit").notNull(),
+    source: text("source").notNull(),
+    fetchedAt: text("fetched_at").notNull(),
+  },
+  (table) => ({
+    pk: uniqueIndex("fx_rates_pk").on(table.rateDate, table.currency),
+  }),
+);
+
 export const investmentAssets = sqliteTable(
   "investment_assets",
   {
@@ -309,6 +340,12 @@ export const investmentAssets = sqliteTable(
     costBasisPlnMinor: integer("cost_basis_pln_minor").notNull().default(0),
     marketValuePlnMinor: integer("market_value_pln_minor").notNull().default(0),
     targetAllocationPercent: real("target_allocation_percent"),
+    lastQuotePriceMinor: integer("last_quote_price_minor"),
+    lastQuoteCurrency: text("last_quote_currency"),
+    lastQuoteFxRate: real("last_quote_fx_rate"),
+    lastQuoteRateDate: text("last_quote_rate_date"),
+    lastPriceFetchedAt: text("last_price_fetched_at"),
+    priceSource: text("price_source"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },

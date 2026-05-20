@@ -1,0 +1,96 @@
+﻿PLN – Account Statement
+Generated: 20 May 2026
+Date: 1 Apr 2026 - 30 Apr 2026
+
+Account owner
+Igor Kotański
+Łukowska 5/246
+–
+04-113 Warszawa
+Poland
+
+Account details
+Local IBAN/Account Number: 16291000062469800200137369
+Local BIC/SWIFT/SORT CODE: BMPBPLPP
+Global IBAN/Account Number: GB39TCCL04140453661239
+Global BIC/SWIFT: TCCLGB3L
+Currency: PLN
+
+Total income:,1136.82,PLN
+Opening balance:,27.30,PLN
+Total outcome:,-1135.39,PLN
+Closing balance:,28.73,PLN
+
+
+Transactions:
+Date,Transaction type,Description,Settlement amount,Settlement currency,Original amount,Original currency,Currency rate,Fee description,Fee amount,Fee currency,Balance
+1 Apr 2026,Card payment,"UBER   *TRIP              NLD,NLD CARD: MASTERCARD *2471",-18.90,PLN,-18.90,PLN,1.000000,Fee for processing transaction,,,8.40
+1 Apr 2026,Card payment,"ZABKA Z6787 K.2              POL,POL CARD: MASTERCARD *2471",-2.70,PLN,-2.70,PLN,1.000000,Fee for processing transaction,,,5.70
+2 Apr 2026,Incoming transfer,"ZEN.COM UAB,   ZEN account top-up ",100.00,PLN,100.00,PLN,1.000000,Fee for processing transaction,,,105.70
+5 Apr 2026,Card payment,"UBER   *TRIP              NLD,NLD CARD: MASTERCARD *2471",-19.88,PLN,-19.88,PLN,1.000000,Fee for processing transaction,,,85.82
+5 Apr 2026,Card payment,"KAUFLAND 05              POL,POL CARD: MASTERCARD *2471",-6.54,PLN,-6.54,PLN,1.000000,Fee for processing transaction,,,79.28
+5 Apr 2026,Card payment,"PL KFC WARSZAWA POWSIN              POL,POL CARD: MASTERCARD *3369",-19.94,PLN,-19.94,PLN,1.000000,Fee for processing transaction,,,59.34
+6 Apr 2026,Exchange money,Currency exchange transaction,-3.71,PLN,-1.00,USD,0.269542,Fee for processing transaction,,,55.63
+6 Apr 2026,Exchange money,Currency exchange transaction,-3.71,PLN,-1.00,USD,0.269542,Fee for processing transaction,,,51.92
+6 Apr 2026,Exchange money,Currency exchange transaction,-3.70,PLN,-1.00,USD,0.270270,Fee for processing transaction,,,48.22
+6 Apr 2026,Exchange money,Currency exchange transaction,-3.70,PLN,-1.00,USD,0.270270,Fee for processing transaction,,,44.52
+6 Apr 2026,Exchange money,Currency exchange transaction,-4.37,PLN,-1.18,USD,0.270023,Fee for processing transaction,,,40.15
+6 Apr 2026,Incoming transfer,"ZEN.COM UAB,   ZEN account top-up ",100.00,PLN,100.00,PLN,1.000000,Fee for processing transaction,,,140.15
+7 Apr 2026,Incoming transfer,"ZEN.COM UAB,   ZEN account top-up ",200.00,PLN,200.00,PLN,1.000000,Fee for processing transaction,,,340.15
+8 Apr 2026,Card payment,"Google CLOUD HvxB72              POL,POL CARD: MASTERCARD *2471",-40.00,PLN,-40.00,PLN,1.000000,Fee for processing transaction,,,300.15
+8 Apr 2026,Exchange money,Currency exchange transaction reversal,3.71,PLN,1.00,USD,3.710000,Fee for processing transaction,,,303.86
+8 Apr 2026,Exchange money,Currency exchange transaction reversal,3.71,PLN,1.00,USD,3.710000,Fee for processing transaction,,,307.57
+8 Apr 2026,Exchange money,Currency exchange transaction reversal,3.70,PLN,1.00,USD,3.700000,Fee for processing transaction,,,311.27
+8 Apr 2026,Exchange money,Currency exchange transaction reversal,3.70,PLN,1.00,USD,3.700000,Fee for processing transaction,,,314.97
+9 Apr 2026,Card payment,"UBER   *TRIP              NLD,NLD CARD: MASTERCARD *2471",-21.92,PLN,-21.92,PLN,1.000000,Fee for processing transaction,,,293.05
+9 Apr 2026,Card payment,"AUT. 2478310 MERA-MZA              POL,POL CARD: MASTERCARD *2471",-125.00,PLN,-125.00,PLN,1.000000,Fee for processing transaction,,,168.05
+10 Apr 2026,Card payment,"V11 CARREFOUR EXPRESS              POL,POL CARD: MASTERCARD *2471",-3.19,PLN,-3.19,PLN,1.000000,Fee for processing transaction,,,164.86
+10 Apr 2026,Card payment,"UBER   *TRIP              NLD,NLD CARD: MASTERCARD *2471",-16.68,PLN,-16.68,PLN,1.000000,Fee for processing transaction,,,148.18
+10 Apr 2026,Card payment,"PL KFC WARSZAWA POWSIN              POL,POL CARD: MASTERCARD *3369",-20.00,PLN,-20.00,PLN,1.000000,Fee for processing transaction,,,128.18
+11 Apr 2026,Card payment,"UBER   *TRIP              NLD,NLD CARD: MASTERCARD *2471",-17.09,PLN,-17.09,PLN,1.000000,Fee for processing transaction,,,111.09
+11 Apr 2026,Card payment,"UBER *TRIP HELP.UBER.C              NLD,NLD CARD: MASTERCARD *2471",-18.04,PLN,-18.04,PLN,1.000000,Fee for processing transaction,,,93.05
+11 Apr 2026,Card payment,"LIDL RODZIEWICZOWNY              POL,POL CARD: MASTERCARD *3369",-6.99,PLN,-6.99,PLN,1.000000,Fee for processing transaction,,,86.06
+11 Apr 2026,Incoming transfer,"ZEN.COM UAB,   ZEN account top-up ",200.00,PLN,200.00,PLN,1.000000,Fee for processing transaction,,,286.06
+12 Apr 2026,Card payment,"PHP HAMANN Sp. z o. o.              POL,POL CARD: MASTERCARD *3369",-3.99,PLN,-3.99,PLN,1.000000,Fee for processing transaction,,,282.07
+13 Apr 2026,Card payment,"WELL FITNESS GOCLAW              POL,POL CARD: MASTERCARD *2471",-109.90,PLN,-109.90,PLN,1.000000,Fee for processing transaction,,,172.17
+13 Apr 2026,Card payment,"LIDL RODZIEWICZOWNY              POL,POL CARD: MASTERCARD *3369",-9.88,PLN,-9.88,PLN,1.000000,Fee for processing transaction,,,162.29
+13 Apr 2026,Card payment,"DELIKATESY CENTRUM              POL,POL CARD: MASTERCARD *3369",-3.69,PLN,-3.69,PLN,1.000000,Fee for processing transaction,,,158.60
+13 Apr 2026,Card payment,"ZABKA Z6787 K.2              POL,POL CARD: MASTERCARD *3369",-9.99,PLN,-9.99,PLN,1.000000,Fee for processing transaction,,,148.61
+15 Apr 2026,Card payment,"UBER   *TRIP              NLD,NLD CARD: MASTERCARD *2471",-18.37,PLN,-18.37,PLN,1.000000,Fee for processing transaction,,,130.24
+15 Apr 2026,Card payment,"PHP HAMANN Sp. z o. o. Warszawa,POL CARD: MASTERCARD *2471",-3.78,PLN,-3.78,PLN,1.000000,Fee for processing transaction,,,126.46
+15 Apr 2026,Card payment,"LIDL RODZIEWICZOWNY WARSZAWA,POL CARD: MASTERCARD *2471",-5.08,PLN,-5.08,PLN,1.000000,Fee for processing transaction,,,121.38
+15 Apr 2026,Card payment,"V11 CARREFOUR EXPRESS              POL,POL CARD: MASTERCARD *2471",-3.19,PLN,-3.19,PLN,1.000000,Fee for processing transaction,,,118.19
+15 Apr 2026,Card payment,"PL KFC WARSZAWA POWSIN              POL,POL CARD: MASTERCARD *3369",-24.95,PLN,-24.95,PLN,1.000000,Fee for processing transaction,,,93.24
+15 Apr 2026,Card payment,"ZABKA ZB145 K.2              POL,POL CARD: MASTERCARD *3369",-8.20,PLN,-8.20,PLN,1.000000,Fee for processing transaction,,,85.04
+15 Apr 2026,Card payment,"ZABKA ZB145 K.2              POL,POL CARD: MASTERCARD *3369",-3.50,PLN,-3.50,PLN,1.000000,Fee for processing transaction,,,81.54
+16 Apr 2026,Card payment,"UBER   *TRIP Amsterdam,NLD CARD: MASTERCARD *2471",-18.35,PLN,-18.35,PLN,1.000000,Fee for processing transaction,,,63.19
+16 Apr 2026,Card payment,"KAUFLAND 05 WARSZAWA,POL CARD: MASTERCARD *2471",-6.58,PLN,-6.58,PLN,1.000000,Fee for processing transaction,,,56.61
+16 Apr 2026,Card payment,"MIDI EGZOTIK Warszawa,POL CARD: MASTERCARD *3369",-7.49,PLN,-7.49,PLN,1.000000,Fee for processing transaction,,,49.12
+17 Apr 2026,Card payment,"McDonalds 227 W-wa 30 Warszawa,POL CARD: MASTERCARD *2471",-6.50,PLN,-6.50,PLN,1.000000,Fee for processing transaction,,,42.62
+17 Apr 2026,Card payment,"UBER   *TRIP Amsterdam,NLD CARD: MASTERCARD *2471",-17.76,PLN,-17.76,PLN,1.000000,Fee for processing transaction,,,24.86
+17 Apr 2026,Card payment,"MIDI EGZOTIK Warszawa,POL CARD: MASTERCARD *3369",-5.99,PLN,-5.99,PLN,1.000000,Fee for processing transaction,,,18.87
+17 Apr 2026,Card payment,"CARREFOUR EXPRESS WARSZAWA,POL CARD: MASTERCARD *3369",-8.98,PLN,-8.98,PLN,1.000000,Fee for processing transaction,,,9.89
+18 Apr 2026,Card payment,"LIDL OSTROBRAMSKA WARSZAWA,POL CARD: MASTERCARD *3369",-7.48,PLN,-7.48,PLN,1.000000,Fee for processing transaction,,,2.41
+19 Apr 2026,Incoming transfer,"ZEN.COM UAB,   ZEN account top-up ",120.00,PLN,120.00,PLN,1.000000,Fee for processing transaction,,,122.41
+21 Apr 2026,Outgoing transfer," Monthly Subscription Fee 21.04.2026 - 20.05.2026 ",-9.99,PLN,-9.99,PLN,1.000000,Fee for processing transaction,,,112.42
+21 Apr 2026,Card payment,"Revolut**6030* Dublin,IRL CARD: MASTERCARD *3369",-50.67,PLN,-50.67,PLN,1.000000,Fee for processing transaction,,,61.75
+22 Apr 2026,Card payment,"LIDL RODZIEWICZOWNY WARSZAWA,POL CARD: MASTERCARD *3369",-5.29,PLN,-5.29,PLN,1.000000,Fee for processing transaction,,,56.46
+22 Apr 2026,Card payment,"PL KFC WARSZAWA POWSIN WARSZAWA,POL CARD: MASTERCARD *3369",-10.00,PLN,-10.00,PLN,1.000000,Fee for processing transaction,,,46.46
+24 Apr 2026,Card payment,"LIDL RODZIEWICZOWNY WARSZAWA,POL CARD: MASTERCARD *3369",-5.71,PLN,-5.71,PLN,1.000000,Fee for processing transaction,,,40.75
+24 Apr 2026,Card payment,"PL KFC WARSZAWA POWSIN WARSZAWA,POL CARD: MASTERCARD *3369",-15.00,PLN,-15.00,PLN,1.000000,Fee for processing transaction,,,25.75
+24 Apr 2026,Card payment,"V11 CARREFOUR EXPRESS WARSZAWA,POL CARD: MASTERCARD *3369",-4.59,PLN,-4.59,PLN,1.000000,Fee for processing transaction,,,21.16
+25 Apr 2026,Card payment,"CARREFOUR EXPRESS WARSZAWA,POL CARD: MASTERCARD *2471",-9.87,PLN,-9.87,PLN,1.000000,Fee for processing transaction,,,11.29
+25 Apr 2026,Card payment,"KAUFLAND 05 WARSZAWA,POL CARD: MASTERCARD *2471",-4.99,PLN,-4.99,PLN,1.000000,Fee for processing transaction,,,6.30
+26 Apr 2026,Incoming transfer,"ZEN.COM UAB,   ZEN account top-up ",402.00,PLN,402.00,PLN,1.000000,Fee for processing transaction,,,408.30
+27 Apr 2026,Card payment,"UBER *ONE MEMBERSHIP U Amsterdam,NLD CARD: MASTERCARD *2471",-3.90,PLN,-3.90,PLN,1.000000,Fee for processing transaction,,,404.40
+28 Apr 2026,Card payment,"ostrovit.com Zambr�w,POL CARD: MASTERCARD *2471",-151.25,PLN,-151.25,PLN,1.000000,Fee for processing transaction,,,253.15
+29 Apr 2026,Card payment,"CARREFOUR EXPRESS WARSZAWA,POL CARD: MASTERCARD *2471",-4.64,PLN,-4.64,PLN,1.000000,Fee for processing transaction,,,248.51
+29 Apr 2026,Card payment,"UBER   *TRIP Amsterdam,NLD CARD: MASTERCARD *2471",-27.27,PLN,-27.27,PLN,1.000000,Fee for processing transaction,,,221.24
+29 Apr 2026,Card payment,"CARREFOUR EXPRESS WARSZAWA,POL CARD: MASTERCARD *3369",-13.98,PLN,-13.98,PLN,1.000000,Fee for processing transaction,,,207.26
+29 Apr 2026,Card payment,"TANIE APTEKI RODZINNE WARSZAWA,POL CARD: MASTERCARD *3369",-158.07,PLN,-158.07,PLN,1.000000,Fee for processing transaction,,,49.19
+30 Apr 2026,Card payment,"LIDL RODZIEWICZOWNY WARSZAWA,POL CARD: MASTERCARD *2471",-14.46,PLN,-14.46,PLN,1.000000,Fee for processing transaction,,,34.73
+30 Apr 2026,Card payment,"WELL FITNESS SPOLKA Z WARSZAWA,POL CARD: MASTERCARD *3369",-6.00,PLN,-6.00,PLN,1.000000,Fee for processing transaction,,,28.73
+
+
+This is a computer-generated document. No signature is required.
+"UAB ZEN.COM is an electronic money institution under the supervision of the Central Bank of Lithuania. Registration number of the company 304749651. Share capital 4.385.000 EUR. Company address: Konstitucijos av. 18B, LT-09308 Vilnius, Lithuania. LEI code: 894500A5TTTCZE08L223"

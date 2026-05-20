@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { quoteCurrencies } from "./pricing";
 import { parseAmountToMinor } from "./transactions";
 
 export const investmentAssetTypes = [
@@ -37,6 +38,12 @@ export const newInvestmentAssetSchema = z.object({
   name: z.string().trim().min(1, "Nazwa jest wymagana.").max(120),
   ticker: z.string().trim().max(32).optional(),
   type: z.enum(investmentAssetTypes),
+  currency: z.enum(quoteCurrencies).default("PLN"),
+  quantity: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^-?\d+([,.]\d{1,6})?$/.test(v), "Niepoprawna ilosc."),
   marketValue: optionalAmountSchema,
   costBasis: optionalAmountSchema,
 });

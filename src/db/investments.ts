@@ -47,6 +47,8 @@ export function createInvestmentAsset(input: {
   name: string;
   ticker?: string;
   type: string;
+  currency?: string;
+  quantity?: number;
   marketValuePlnMinor: number;
   costBasisPlnMinor: number;
 }) {
@@ -59,7 +61,8 @@ export function createInvestmentAsset(input: {
       name: input.name,
       ticker: input.ticker?.trim() || null,
       type: input.type,
-      quantity: 0,
+      currency: input.currency ?? "PLN",
+      quantity: input.quantity ?? 0,
       costBasisPlnMinor: input.costBasisPlnMinor,
       marketValuePlnMinor: input.marketValuePlnMinor,
       targetAllocationPercent: null,

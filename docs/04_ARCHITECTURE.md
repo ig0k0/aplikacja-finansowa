@@ -4,7 +4,7 @@ Data dokumentu: 2026-05-01
 
 Ten dokument jest zrodlem prawdy o architekturze. Powinien byc aktualizowany przy kazdej istotnej zmianie: wyborze stacku, zmianie modelu danych, dodaniu integracji, zmianie przeplywu importu, zmianie AI albo zmianie wdrozenia.
 
-**Stan na 2026-05-01:** monolit Next.js + SQLite + Drizzle; import `/imports` (**CSV / XLSX / PDF** + **OCR** zdjec `pol` + **szablony nazw kolumn**); AI `/review`; backup i **`/audit`**; **inwestycje MVP** — tabele `investment_*`, widok **`/investments`**, metryki portfela na dashboardzie. **Analityka (Etap 7):** **`/insights`** — m/m, prognoza, reczne `is_recurring`, **heurystyka** powtarzalnych oplat (`listHeuristicRecurringCandidates`), eksport CSV/PDF. **2FA TOTP (Etap 8, czesciowo):** konfiguracja **`/settings/security`** (`otplib`, QR), drugi krok logowania **`/login/totp`**, tabela `login_totp_pending`. **Responsywnosc (Etap 8, czesciowo):** `viewport` w root layout, istniejace breakpointy (`grid-3`, `form-grid`, `page-header`), klasy **`button-row`** / **`inline-form`** (wrap). **Wykres trendu (Etap 8, czesciowo):** `/insights` — `summarizeRollingMonthsForUser`, `MonthlyTrendChart`. Szczegoly: `docs/10_ROADMAP.md` (rowniez **Backlog** i **plan weryfikacji recznej**).
+**Stan na 2026-05-20:** monolit Next.js + SQLite + Drizzle; import `/imports` (**CSV / XLSX / PDF** + **OCR** zdjec `pol` + **szablony nazw kolumn**); AI `/review`; backup i **`/audit`**; **inwestycje MVP** — tabele `investment_*`, widok **`/investments`**, metryki portfela na dashboardzie. **Analityka (Etap 7):** **`/insights`** — m/m, prognoza, reczne `is_recurring`, **heurystyka** powtarzalnych oplat (`listHeuristicRecurringCandidates`), eksport CSV/PDF. **2FA TOTP (Etap 8, czesciowo):** konfiguracja **`/settings/security`** (`otplib`, QR), drugi krok logowania **`/login/totp`**, tabela `login_totp_pending`. **Responsywnosc (Etap 8, czesciowo):** `viewport` w root layout, istniejace breakpointy (`grid-3`, `form-grid`, `page-header`), klasy **`button-row`** / **`inline-form`** (wrap). **Wykres trendu (Etap 8, czesciowo):** `/insights` — `summarizeRollingMonthsForUser`, `MonthlyTrendChart`. Szczegoly: `docs/10_ROADMAP.md` (rowniez **Backlog** i **plan weryfikacji recznej**).
 
 ## 1. Cele Architektoniczne
 
@@ -78,7 +78,7 @@ Obsluguje zagniezdzone kategorie i ich typy: przychod, wydatek, inwestycja, tran
 
 ### Imports
 
-Przetwarza pliki bankowe. Pipeline importu powinien byc deterministyczny, testowalny i transakcyjny. **Neutralny import:** CSV i XLSX (`parse-file.ts`), **PDF** (`pdf-parse`, tabele / tekst), **zdjecia paragonow** PNG/JPEG/WebP — **Tesseract** (`tesseract.js`, jezyk **`pol`**), potem ten sam podzial kolumn co przy tekscie z PDF. **`@/domain/import-presets`** — przykladowe szablony nazw kolumn (linki na `/imports`), bez automatycznych parserow bankowych. Skany PDF bez warstwy tekstowej: komunikat z sugestia zapisu strony jako obraz (OCR) lub CSV/XLSX. **Mobilnosc (Etap 8):** `viewport`, breakpoint 800px na siatkach, **`inline-form`** / **`button-row`** / **`card-heading-row`** / **`field-row`** na kluczowych widokach.
+Przetwarza pliki bankowe. Pipeline importu powinien byc deterministyczny, testowalny i transakcyjny. **Neutralny import:** CSV i XLSX (`parse-file.ts`), **PDF** (`pdf-parse`, tabele / tekst), **zdjecia paragonow** PNG/JPEG/WebP — **Tesseract** (`tesseract.js`, jezyk **`pol`**), potem ten sam podzial kolumn co przy tekscie z PDF. **`@/domain/import-presets`** — reczne szablony nazw kolumn. **`@/imports/bank-parsers`** + **`zen-csv-table`** — parsery CSV: **ZEN** (wycinanie sekcji Transactions z wyciagu), **mBank, Revolut, PKO BP**; auto-mapowanie w `createImportPreviewAction`. Import ZEN: data ang. (`1 Apr 2026`), typ z znaku kwoty w `Settlement amount`. Skany PDF bez warstwy tekstowej: komunikat z sugestia zapisu strony jako obraz (OCR) lub CSV/XLSX. **Mobilnosc (Etap 8):** `viewport`, breakpoint 800px na siatkach, **`inline-form`** / **`button-row`** / **`card-heading-row`** / **`field-row`** na kluczowych widokach.
 
 ### AI
 
@@ -86,15 +86,15 @@ Nie powinien bezposrednio zapisywac finalnych danych finansowych. Powinien gener
 
 ### Reports
 
-Odpowiada za dashboard, raporty miesieczne, roczne, trendy i prognozy. **Analityka (Etap 7):** `@/db/analytics` (m.in. m/m, prognoza, sumy `is_recurring`, heurystyka merchant/opis); UI **`/insights`**; eksport CSV/PDF (`@/lib/insights-pdf`). **Etap 8 (czesciowo):** trend **12 miesiecy** na `/insights` — `summarizeRollingMonthsForUser`, komponent SVG **`MonthlyTrendChart`** (przychody vs wydatki).
+Odpowiada za dashboard, raporty miesieczne, roczne, trendy i prognozy. **Analityka (Etap 7):** `@/db/analytics` (m.in. m/m, prognoza, sumy `is_recurring`, heurystyka merchant/opis); UI **`/insights`**; eksport CSV/PDF (`@/lib/insights-pdf`). **Etap 8 (czesciowo):** trend **12 miesiecy** na `/insights` — `summarizeRollingMonthsForUser`, **`MonthlyTrendChart`**; **backlog:** top kategorii wydatkow — `summarizeTopCategoryExpenseTrends`, **`CategoryExpenseTrendChart`**.
 
 ### Investments
 
-Przechowuje aktywa, operacje, cele, alokacje i wyceny. W MVP moze byc prosty, ale model powinien nie blokowac pozniejszego rebalancingu.
+Przechowuje aktywa, operacje, cele, alokacje i wyceny. **Ceny (backlog MVP):** `@/pricing/nbp` (kursy USD/EUR→PLN), `@/pricing/stooq` (cena jednostkowa), `@/db/investment-prices` — przycisk na `/investments` ustawia `market_value_pln_minor`; analiza tylko w PLN.
 
 ### Operations
 
-Backup, restore, eksport danych, health check i zadania administracyjne.
+Backup, restore, eksport danych, health check (`GET /api/health`) i zadania administracyjne. **VPS:** `src/middleware.ts` (naglowki), `src/lib/login-rate-limit.ts`, `deploy/` (Caddy + HTTPS).
 
 ## 5. Przeplyw Importu
 
