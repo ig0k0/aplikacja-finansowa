@@ -121,6 +121,7 @@ Restore zachowuje poprzednia baze jako plik `.pre-restore-*` obok aktualnej bazy
 ## Zaplanowany backup i audyt
 
 - `npm run backup:scheduled` — tworzy kopie jak `backup:create` oraz (jesli `BACKUP_RETENTION_DAYS` > 0) usuwa najstarsze pliki `*.cfo-backup.json` z `BACKUP_DESTINATION`. Uruchamiaj z crona (np. codziennie w nocy).
+- `npm run backup:google-drive` — weryfikuje zaszyfrowaną kopię i wysyła ją przez wcześniej skonfigurowany `rclone`; szczegóły bezpieczeństwa są w `docs/14_ORACLE_CLOUD_SECURITY_RUNBOOK.md`.
 - Zdarzenia **logowania, wylogowania, importu, backupu/restore** trafiaja do tabeli audytu; w UI: **`/audit`** (bez kwot i opisow transakcji w meta).
 
 ## AI i kolejka weryfikacji
@@ -178,6 +179,9 @@ Przed realnym uzyciem danych finansowych nalezy dodac i przetestowac szyfrowany 
 11. `docs/10_ROADMAP.md` - etapy budowy.
 12. `docs/11_DECISIONS.md` - decyzje architektoniczne.
 13. `docs/12_RESOURCE_AND_ARCHITECTURE_PLAN.md` - audyt obecnego stanu i plan uproszczenia.
+14. `docs/13_MANUAL_TEST_PLAN.md` - pełna procedura testów manualnych i restore.
+15. `docs/14_ORACLE_CLOUD_SECURITY_RUNBOOK.md` - bezpieczne wdrożenie Oracle Cloud Always Free.
+16. `docs/15_PUBLIC_REAL_TIME_DATASETS_ASSESSMENT.md` - ocena katalogu publicznych API.
 
 ## Zasady Projektowe
 

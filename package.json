@@ -21,6 +21,7 @@
     "backup:verify": "tsx src/scripts/backup.ts verify",
     "backup:restore": "tsx src/scripts/backup.ts restore",
     "backup:scheduled": "tsx src/scripts/scheduled-backup.ts",
+    "backup:google-drive": "tsx src/scripts/backup-google-drive.ts",
     "benchmark:import": "node --import tsx src/scripts/benchmark-import.ts",
     "test:e2e": "node --import tsx src/scripts/e2e-release.ts",
     "verify:foundation": "node --import tsx src/scripts/verify-foundation.ts"

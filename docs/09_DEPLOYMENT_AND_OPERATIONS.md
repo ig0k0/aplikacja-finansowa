@@ -120,9 +120,10 @@ Wymagania:
 - retencja,
 - log statusu bez danych finansowych.
 
-Pierwsza implementacja backupu jest lokalna i CLI-only:
+Backup lokalny jest dostępny z CLI, a Google Drive ma jawny, opcjonalny adapter `rclone`:
 
 - `npm run backup:scheduled` — jednorazowe utworzenie kopii (np. z crona na hoście) i opcjonalne usuniecie plikow `*.cfo-backup.json` starszych niz `BACKUP_RETENTION_DAYS` w `BACKUP_DESTINATION`,
+- `npm run backup:google-drive` — tworzy i **weryfikuje** zaszyfrowaną kopię, przesyła ją przez `rclone`, potwierdza plik zdalny i dopiero wtedy zapisuje audyt; wymaga `GOOGLE_DRIVE_RCLONE_REMOTE`, `GOOGLE_DRIVE_RCLONE_PATH` oraz konfiguracji `rclone` poza repozytorium,
 - dziennik audytu w aplikacji: widok `/audit` (logowania, wylogowania, zakonczone importy, backup/restore z CLI); meta bez danych finansowych,
 
 Proponowana retencja:
@@ -170,7 +171,7 @@ Nie potrzeba rozbudowanego monitoringu SaaS na start.
 
 ## 10. Google Drive Backup
 
-Rekomendacja dla MVP: skrypt `npm run backup:scheduled` (lub `backup:create`) zapisuje juz zaszyfrowany plik — mozesz synchronizowac katalog `BACKUP_DESTINATION` narzedziem zewnetrznym (np. **rclone**), bez wbudowanego OAuth w aplikacji.
+Rekomendacja: `npm run backup:google-drive` przez `rclone`; OAuth pozostaje poza aplikacją i repozytorium. Szczegółowa konfiguracja oraz timer: `docs/14_ORACLE_CLOUD_SECURITY_RUNBOOK.md`.
 
 Google Drive jest akceptowalnym miejscem backupu, jesli:
 

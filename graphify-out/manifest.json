@@ -148,8 +148,12 @@
     "hash": "58619029da079845a12a024fded326e3"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/dashboard/page.tsx": {
-    "mtime": 1788630607.5130987,
-    "hash": "a0cc2bfb54ab670041a3590a266d3e4c"
+    "mtime": 1788680523.470775,
+    "hash": "fd11032689b2dcf2bfd4b5ae6a009d59"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/dashboard/expense-bar-chart.tsx": {
+    "mtime": 1788680837.764432,
+    "hash": "8a6fcc8ad2c8e6daf7092f401df5bd20"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/app/transactions/actions.ts": {
     "mtime": 1788630556.7801082,
@@ -274,6 +278,10 @@
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/scripts/assert-node-version.mjs": {
     "mtime": 1788676148.2152562,
     "hash": "dbcd2bb9d59a5920c08aa9236ca58d14"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/scripts/backup-google-drive.ts": {
+    "mtime": 1788680731.0366101,
+    "hash": "70a6309a2250fbaa0821effb59f7a961"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/src/scripts/verify-foundation.ts": {
     "mtime": 1788676607.1282504,
@@ -484,8 +492,8 @@
     "hash": "342c52a6a9df5ae6a1632e8f394225ab"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/README.md": {
-    "mtime": 1788676503.4336164,
-    "hash": "ae1f3e26e74a7acc3b82f0a3696d8ec6"
+    "mtime": 1788680815.977674,
+    "hash": "eb77cc910e942916758e159ba5a823e0"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docker-compose.yml": {
     "mtime": 1777835903.4496403,
@@ -496,12 +504,20 @@
     "hash": "f7a1876ce79066f88864042a167a5914"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/deploy/docker-compose.vps.yml": {
-    "mtime": 1779284626.637349,
-    "hash": "5385c596806225a17cb02cea24751b46"
+    "mtime": 1788680731.0872931,
+    "hash": "05fdda3a17cb8dfc0adbcaba723c35b1"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/00_PROJECT_OVERVIEW.md": {
     "mtime": 1779284658.2142642,
     "hash": "b84d0605af23722fe981044dc714c4a3"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/13_MANUAL_TEST_PLAN.md": {
+    "mtime": 1788680701.2648406,
+    "hash": "ecb5734529a454b90f89c7aae58eff94"
+  },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/15_PUBLIC_REAL_TIME_DATASETS_ASSESSMENT.md": {
+    "mtime": 1788680701.3141751,
+    "hash": "b3120db32ac9b83458f9af4ebe1ce2e5"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/10_ROADMAP.md": {
     "mtime": 1788626547.9136686,
@@ -519,9 +535,13 @@
     "mtime": 1777665319.2955804,
     "hash": "37d5d3e852ef093bbcc772630924bdbd"
   },
+  "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/14_ORACLE_CLOUD_SECURITY_RUNBOOK.md": {
+    "mtime": 1788680815.8818283,
+    "hash": "b738e5d733dea46dd881cad2d927adab"
+  },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/09_DEPLOYMENT_AND_OPERATIONS.md": {
-    "mtime": 1779284657.0163527,
-    "hash": "058a3e836236a997d821652e6f6ef07e"
+    "mtime": 1788680815.9297628,
+    "hash": "0b2a74a924fdb3bc0bffd5a305590af3"
   },
   "/Users/igor/Documents/projekt-aplikacjarozwojowa/docs/12_RESOURCE_AND_ARCHITECTURE_PLAN.md": {
     "mtime": 1788676779.5296564,
