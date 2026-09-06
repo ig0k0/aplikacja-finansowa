@@ -66,36 +66,60 @@ export function findCorrectionMemoryCategoryId(input: {
   description: string | null;
   rawDescription: string | null;
 }) {
-  const rows = db
-    .select()
-    .from(userCorrectionMemory)
-    .where(eq(userCorrectionMemory.userId, input.userId))
-    .orderBy(desc(userCorrectionMemory.lastUsedAt))
-    .all();
-
   const merchantNorm = input.merchantName?.trim().toLowerCase() ?? "";
+
+  if (merchantNorm) {
+    const merchantRule = db
+      .select({ id: userCorrectionMemory.id, categoryId: userCorrectionMemory.categoryId })
+      .from(userCorrectionMemory)
+      .where(
+        and(
+          eq(userCorrectionMemory.userId, input.userId),
+          eq(userCorrectionMemory.patternType, MERCHANT),
+          eq(userCorrectionMemory.patternValue, merchantNorm),
+        ),
+      )
+      .get();
+
+    if (merchantRule) {
+      db.update(userCorrectionMemory)
+        .set({ lastUsedAt: nowIso() })
+        .where(eq(userCorrectionMemory.id, merchantRule.id))
+        .run();
+
+      return merchantRule.categoryId;
+    }
+  }
+
   const blob = [input.description, input.rawDescription]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
 
-  for (const type of [MERCHANT, DESCRIPTION_CONTAINS] as const) {
-    for (const row of rows) {
-      if (row.patternType !== type) {
-        continue;
-      }
+  if (!blob) {
+    return null;
+  }
 
-      if (type === MERCHANT && merchantNorm && row.patternValue === merchantNorm) {
-        return row.categoryId;
-      }
+  const descriptionRules = db
+    .select({ id: userCorrectionMemory.id, categoryId: userCorrectionMemory.categoryId, patternValue: userCorrectionMemory.patternValue })
+    .from(userCorrectionMemory)
+    .where(
+      and(
+        eq(userCorrectionMemory.userId, input.userId),
+        eq(userCorrectionMemory.patternType, DESCRIPTION_CONTAINS),
+      ),
+    )
+    .orderBy(desc(userCorrectionMemory.lastUsedAt))
+    .all();
 
-      if (
-        type === DESCRIPTION_CONTAINS &&
-        row.patternValue &&
-        blob.includes(row.patternValue.toLowerCase())
-      ) {
-        return row.categoryId;
-      }
+  for (const rule of descriptionRules) {
+    if (rule.patternValue && blob.includes(rule.patternValue.toLowerCase())) {
+      db.update(userCorrectionMemory)
+        .set({ lastUsedAt: nowIso() })
+        .where(eq(userCorrectionMemory.id, rule.id))
+        .run();
+
+      return rule.categoryId;
     }
   }
 

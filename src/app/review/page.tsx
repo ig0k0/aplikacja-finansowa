@@ -4,7 +4,11 @@ import { formatCurrencyMinor, formatDate } from "@/lib/format";
 import { getAiRuntimeConfig } from "@/lib/ai-config";
 import { toTransactionTypeLabel, type TransactionType } from "@/domain/transactions";
 import { updateTransactionCategoryAction } from "@/app/transactions/actions";
-import { runAiBatchAction, runAiForTransactionAction } from "./actions";
+import {
+  acceptAiSuggestionsBulkAction,
+  runAiBatchAction,
+  runAiForTransactionAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +17,10 @@ type ReviewPageProps = {
     error?: string;
     ai?: string;
     batch?: string;
+    bulk?: string;
+    accepted?: string;
+    skipped?: string;
+    scanned?: string;
     processed?: string;
     memory?: string;
     ai_auto?: string;
@@ -46,12 +54,17 @@ function toFilterType(type: string): TransactionType | undefined {
 export default async function ReviewPage({ searchParams }: ReviewPageProps) {
   const user = await requireUser();
   const params = searchParams ? await searchParams : {};
-  const [{ listCategoriesForUser }, { listTransactionsForUser, countTransactionsNeedingReviewForUser }, { getLatestAiSuggestionsForTransactions }] =
-    await Promise.all([
-      import("@/db/categories"),
-      import("@/db/transactions"),
-      import("@/db/ai-suggestions"),
-    ]);
+  const [
+    { listCategoriesForUser },
+    { listTransactionsForUser, countTransactionsNeedingReviewForUser },
+    { getLatestAiSuggestionsForTransactions },
+    { countBulkAcceptEligibleForUser },
+  ] = await Promise.all([
+    import("@/db/categories"),
+    import("@/db/transactions"),
+    import("@/db/ai-suggestions"),
+    import("@/db/review-bulk"),
+  ]);
 
   const categories = listCategoriesForUser(user.id);
   const aiConfig = getAiRuntimeConfig();
@@ -64,6 +77,7 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
     user.id,
     queue.map((row) => row.id),
   );
+  const bulkEligible = countBulkAcceptEligibleForUser(user.id);
 
   return (
     <main className="page">
@@ -109,6 +123,20 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
         <p className="card">Brak transakcji oczekujacych w kolejce.</p>
       ) : null}
 
+      {params.bulk === "1" ? (
+        <p className="card" style={{ borderColor: "#86efac" }}>
+          Zaakceptowano sugestie AI dla <strong>{params.accepted ?? "0"}</strong> transakcji
+          (pominieto: {params.skipped ?? "0"}, przeskanowano: {params.scanned ?? "0"}).
+        </p>
+      ) : null}
+
+      {params.bulk === "none" ? (
+        <p className="card" style={{ borderColor: "#fde047" }}>
+          Brak pozycji z sugestia AI powyzej progu ({aiConfig.reviewThreshold}). Najpierw uruchom
+          AI dla kolejki albo zapisz kategorie recznie.
+        </p>
+      ) : null}
+
       <section className="card" style={{ marginBottom: 24 }}>
         <p className="muted">
           W kolejce: <strong>{reviewCount}</strong>. Pamiec korekt jest stosowana przed wywolaniem
@@ -121,11 +149,30 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
             <code>AI_BASE_URL</code>, <code>AI_MODEL</code>).
           </p>
         ) : null}
-        <form action={runAiBatchAction}>
-          <button className="button" type="submit">
-            Uruchom AI dla 25 najstarszych w kolejce
-          </button>
-        </form>
+        <div className="button-row">
+          <form action={runAiBatchAction}>
+            <button className="button" type="submit">
+              Uruchom AI dla 25 najstarszych w kolejce
+            </button>
+          </form>
+          {bulkEligible.eligible > 0 ? (
+            <form action={acceptAiSuggestionsBulkAction} className="inline-form">
+              <label className="muted field-row">
+                <input name="remember" type="checkbox" value="1" />
+                Zapamietaj wzorce
+              </label>
+              <button className="button button-secondary" type="submit">
+                Zaakceptuj sugestie AI ({bulkEligible.eligible})
+              </button>
+            </form>
+          ) : null}
+        </div>
+        {reviewCount > 0 && bulkEligible.eligible === 0 ? (
+          <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
+            Masowa akceptacja wymaga ostatniej sugestii AI z kategoria i pewnoscia &gt;={" "}
+            {aiConfig.reviewThreshold}. Uruchom AI dla kolejki powyzej.
+          </p>
+        ) : null}
       </section>
 
       <section className="card">

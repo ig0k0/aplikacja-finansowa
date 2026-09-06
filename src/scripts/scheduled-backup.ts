@@ -1,3 +1,4 @@
+import "../lib/load-env";
 import fs from "node:fs";
 import path from "node:path";
 import { createEncryptedBackup } from "../ops/encrypted-backup";

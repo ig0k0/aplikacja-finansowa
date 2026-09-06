@@ -1,3 +1,4 @@
+import "../lib/load-env";
 import path from "node:path";
 import {
   createEncryptedBackup,

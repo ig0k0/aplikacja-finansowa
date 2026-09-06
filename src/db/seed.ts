@@ -1,3 +1,4 @@
+import "../lib/load-env";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, rawDb } from "./client";
 import { applyMigrations } from "./apply-migrations";

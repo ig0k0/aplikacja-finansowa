@@ -43,11 +43,13 @@ function categoryOptionsForType(
 export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
   const user = await requireUser();
   const params = searchParams ? await searchParams : {};
-  const [{ listCategoriesForUser }, { listTransactionsForUser }] = await Promise.all([
+  const [{ listCategoriesForUser }, { listTransactionsForUser }, { listFinancialAccountsForUser }] = await Promise.all([
     import("@/db/categories"),
     import("@/db/transactions"),
+    import("@/db/financial-accounts"),
   ]);
   const categories = listCategoriesForUser(user.id);
+  const accounts = listFinancialAccountsForUser(user.id);
   const filterType = toFilterType(params.type);
   const filteredCategories = categoryOptionsForType(categories, filterType);
   const transactions = listTransactionsForUser(user.id, {
@@ -111,6 +113,17 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                     {category.name}
                   </option>
                 ))}
+            </select>
+          </label>
+          <label className="field">
+            Konto finansowe
+            <select className="input" name="financialAccountId" defaultValue="">
+              <option value="">Bez przypisania</option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.institution} — {account.name} ({account.currency})
+                </option>
+              ))}
             </select>
           </label>
           <label className="field">

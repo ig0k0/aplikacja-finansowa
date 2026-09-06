@@ -159,12 +159,15 @@ export const transactions = sqliteTable(
     currency: text("currency").notNull().default("PLN"),
     amountPlnMinor: integer("amount_pln_minor").notNull(),
     fxRate: text("fx_rate"),
+    bankReference: text("bank_reference"),
     merchantName: text("merchant_name"),
     counterpartyName: text("counterparty_name"),
     description: text("description"),
     rawDescription: text("raw_description"),
     tagList: text("tag_list"),
     verificationStatus: text("verification_status").notNull().default("needs_review"),
+    categorizationStatus: text("categorization_status").notNull().default("done"),
+    categorizationStartedAt: text("categorization_started_at"),
     source: text("source").notNull().default("manual"),
     dedupeKey: text("dedupe_key"),
     isRecurring: integer("is_recurring", { mode: "boolean" }).notNull().default(false),
@@ -174,6 +177,27 @@ export const transactions = sqliteTable(
   (table) => ({
     userIdIdx: index("transactions_user_id_idx").on(table.userId),
     dateIdx: index("transactions_date_idx").on(table.transactionDate),
+    userDateIdx: index("transactions_user_date_idx").on(table.userId, table.transactionDate),
+    userTypeDateIdx: index("transactions_user_type_date_idx").on(
+      table.userId,
+      table.type,
+      table.transactionDate,
+    ),
+    userCategoryDateIdx: index("transactions_user_category_date_idx").on(
+      table.userId,
+      table.categoryId,
+      table.transactionDate,
+    ),
+    userReviewDateIdx: index("transactions_user_review_date_idx").on(
+      table.userId,
+      table.verificationStatus,
+      table.transactionDate,
+    ),
+    userCategorizationDateIdx: index("transactions_user_categorization_date_idx").on(
+      table.userId,
+      table.categorizationStatus,
+      table.transactionDate,
+    ),
     dedupeIdx: uniqueIndex("transactions_user_dedupe_key_idx").on(
       table.userId,
       table.dedupeKey,
@@ -215,6 +239,9 @@ export const importBatches = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     sourceInstitution: text("source_institution").notNull(),
+    financialAccountId: text("financial_account_id").references(() => financialAccounts.id, {
+      onDelete: "set null",
+    }),
     fileName: text("file_name").notNull(),
     fileType: text("file_type").notNull(),
     fileHash: text("file_hash").notNull(),
@@ -231,6 +258,9 @@ export const importBatches = sqliteTable(
   (table) => ({
     userIdIdx: index("import_batches_user_id_idx").on(table.userId),
     fileHashIdx: index("import_batches_file_hash_idx").on(table.fileHash),
+    financialAccountIdIdx: index("import_batches_financial_account_id_idx").on(
+      table.financialAccountId,
+    ),
   }),
 );
 
@@ -287,6 +317,9 @@ export const aiSuggestions = sqliteTable(
     userIdIdx: index("ai_suggestions_user_id_idx").on(table.userId),
     transactionIdIdx: index("ai_suggestions_transaction_id_idx").on(table.transactionId),
     statusIdx: index("ai_suggestions_status_idx").on(table.status),
+    transactionUnique: uniqueIndex("ai_suggestions_transaction_unique_idx").on(
+      table.transactionId,
+    ),
   }),
 );
 

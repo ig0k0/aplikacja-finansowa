@@ -1,3 +1,4 @@
+import "../lib/load-env";
 import { rawDb } from "./client";
 import { applyMigrations } from "./apply-migrations";
 

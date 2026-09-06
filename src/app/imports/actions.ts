@@ -3,6 +3,11 @@
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  assertImportRowLimit,
+  isOcrImageFile,
+  validateImportFileSize,
+} from "@/domain/import-limits";
 import { importMappingSchema, normalizeImportRow } from "@/domain/imports";
 import { requireUser } from "@/lib/session";
 import { detectBankImportMapping } from "@/imports/bank-parsers";
@@ -24,19 +29,36 @@ export async function createImportPreviewAction(formData: FormData) {
     redirectWithError("Wybierz plik CSV, XLSX, PDF albo zdjecie (PNG, JPEG, WebP) do OCR.");
   }
 
+  const sizeError = validateImportFileSize(file.name, file.size);
+
+  if (sizeError) {
+    redirectWithError(sizeError);
+  }
+
+  if (isOcrImageFile(file.name) && String(formData.get("allowOcr") ?? "") !== "1") {
+    redirectWithError("Zaznacz zgode na OCR obrazu przed rozpoczeciem rozpoznawania tekstu.");
+  }
+
   let batchId: string;
   let detectedParserId: string | undefined;
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
+    const parseStartedAt = Date.now();
     const parsed = await parseImportFile(file);
-    const detected = detectBankImportMapping(parsed.headers, file.name);
+    const parseDurationMs = Date.now() - parseStartedAt;
+    assertImportRowLimit(parsed.rows.length);
+    const detected = detectBankImportMapping(parsed.headers);
 
     const mappingInput = {
       dateColumn: String(formData.get("dateColumn") ?? ""),
+      postedDateColumn: String(formData.get("postedDateColumn") ?? ""),
       amountColumn: String(formData.get("amountColumn") ?? ""),
+      currencyColumn: String(formData.get("currencyColumn") ?? ""),
+      fxRateColumn: String(formData.get("fxRateColumn") ?? ""),
       descriptionColumn: String(formData.get("descriptionColumn") ?? ""),
       merchantColumn: String(formData.get("merchantColumn") ?? ""),
+      bankReferenceColumn: String(formData.get("bankReferenceColumn") ?? ""),
       categoryId: String(formData.get("categoryId") ?? ""),
       defaultType: String(formData.get("defaultType") ?? ""),
     };
@@ -64,33 +86,46 @@ export async function createImportPreviewAction(formData: FormData) {
     }
 
     const sourceInstitutionRaw = String(formData.get("sourceInstitution") ?? "").trim();
+    const financialAccountId = String(formData.get("financialAccountId") ?? "").trim() || null;
+
+    if (!financialAccountId) {
+      redirectWithError("Wybierz konto finansowe przed utworzeniem podgladu importu.");
+    }
+
     const sourceInstitution =
       sourceInstitutionRaw && sourceInstitutionRaw !== "generic"
         ? sourceInstitutionRaw
         : (detected?.sourceInstitution ?? sourceInstitutionRaw) || "generic";
     const { createImportPreview } = await import("@/db/imports");
+    const normalizeStartedAt = Date.now();
+    const rows = parsed.rows.map((row, index) => {
+      try {
+        return {
+          rowNumber: index + 2,
+          raw: row,
+          normalized: normalizeImportRow(user.id, row, mapping.data, { financialAccountId }),
+        };
+      } catch (error) {
+        return {
+          rowNumber: index + 2,
+          raw: row,
+          error: error instanceof Error ? error.message : "Niepoprawny wiersz.",
+        };
+      }
+    });
+    const normalizeDurationMs = Date.now() - normalizeStartedAt;
+
     batchId = createImportPreview({
       userId: user.id,
       fileName: file.name,
       fileType: file.name.split(".").pop()?.toLowerCase() ?? "unknown",
       fileHash: fileHash(buffer),
       sourceInstitution,
+      financialAccountId,
+      parseDurationMs,
+      normalizeDurationMs,
       mapping: mapping.data,
-      rows: parsed.rows.map((row, index) => {
-        try {
-          return {
-            rowNumber: index + 2,
-            raw: row,
-            normalized: normalizeImportRow(user.id, row, mapping.data),
-          };
-        } catch (error) {
-          return {
-            rowNumber: index + 2,
-            raw: row,
-            error: error instanceof Error ? error.message : "Niepoprawny wiersz.",
-          };
-        }
-      }),
+      rows,
     });
 
   } catch (error) {

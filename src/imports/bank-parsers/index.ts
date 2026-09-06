@@ -8,7 +8,7 @@ export type { BankParserId, BankParserMatch } from "./types";
 
 const matchers = [matchZenCsv, matchRevolutCsv, matchMbankCsv, matchPkoCsv] as const;
 
-export function detectBankImportMapping(headers: string[], _fileName: string): BankParserMatch | null {
+export function detectBankImportMapping(headers: string[]): BankParserMatch | null {
   for (const match of matchers) {
     const result = match(headers);
 

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, gt } from "drizzle-orm";
 import type { User } from "@/db/schema";
-import { useSecureSessionCookies } from "./cookie-security";
+import { shouldUseSecureSessionCookies } from "./cookie-security";
 import { createId } from "./ids";
 import { nowIso } from "./time";
 
@@ -43,7 +43,7 @@ export async function createSession(userId: string) {
   cookieStore.set(sessionCookieName, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: useSecureSessionCookies(),
+    secure: shouldUseSecureSessionCookies(),
     path: "/",
     expires: new Date(expiresAt),
   });

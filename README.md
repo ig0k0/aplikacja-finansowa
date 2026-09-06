@@ -2,9 +2,9 @@
 
 Self-hosted aplikacja webowa do rejestrowania, importowania i analizowania finansow osobistych dla dwoch osob w rodzinie. Projekt ma laczyc szybkie wpisywanie wydatkow, import plikow bankowych, kategoryzacje wspierana przez AI, analize budzetow, majatku netto oraz inwestycji.
 
-**Status implementacji (2026-05-01):** etapy **0–6 (MVP)** wedlug `docs/10_ROADMAP.md` — m.in. **`/investments`**, audyt **`/audit`**, `npm run backup:scheduled`, retencja `BACKUP_RETENTION_DAYS`. **Nastepny etap w kodzie:** **7** (analityka i rekomendacje) — **jeszcze nie wdrozony** (patrz *Punkt zatrzymania* w `docs/10_ROADMAP.md`). Presety importu pod konkretne banki nadal nie sa w kodzie; Google Drive w aplikacji — nie (mozliwy `rclone`).
+**Status implementacji:** etapy **0–8** i priorytetowe elementy backlogu sa w kodzie. Obejmuje to parsery CSV dla mBank, PKO BP, Revolut i ZEN, analityke `/insights`, inwestycje, backup/audyt, 2FA TOTP, PDF/OCR oraz VPS/HTTPS MVP. Szczegolowy stan i checklisty sa w `docs/10_ROADMAP.md`.
 
-**Punkt zatrzymania:** ostatnia pelna implementacja w repozytorium to **Etap 6**; **Etap 7** jest tylko w dokumentacji roadmapy.
+**Nastepna inicjatywa:** plan ograniczenia zuzycia zasobow i uproszczenia domeny jest w `docs/12_RESOURCE_AND_ARCHITECTURE_PLAN.md`. Nie rozszerza zakresu o kolejne serwisy — najpierw stabilizuje import, kategoryzacje i testy.
 
 **Cron backupu (przyklad):**
 
@@ -29,6 +29,8 @@ Aplikacja ma pomagac kontrolowac wydatki i przychody, zrozumiec strukture koszto
 - backup, odtwarzanie danych i audyt dostepu.
 
 ## Uruchomienie Developerskie
+
+Wymagany jest Node.js 24 LTS (ten sam glowny runtime co obraz Docker). Next.js 16 wymaga co najmniej Node.js 20.9; lokalny Node 25 nie jest objety zakresem projektu.
 
 1. Zainstaluj zaleznosci:
 
@@ -81,7 +83,11 @@ W kontenerze uruchom seed (jednorazowo): `docker compose exec app npm run db:see
 npm run lint
 npm run typecheck
 npm run verify:foundation
+npm run build
+npm run test:e2e
 ```
+
+`npm run build` oraz `npm run test:e2e` wymagaja Node.js 24 LTS. Test E2E uruchamia produkcyjny artefakt na lokalnym porcie i tymczasowej SQLite; nie modyfikuje danych aplikacji.
 
 ## Lokalny Szyfrowany Backup
 
@@ -171,6 +177,7 @@ Przed realnym uzyciem danych finansowych nalezy dodac i przetestowac szyfrowany 
 10. `docs/09_DEPLOYMENT_AND_OPERATIONS.md` - wdrozenie i operacje.
 11. `docs/10_ROADMAP.md` - etapy budowy.
 12. `docs/11_DECISIONS.md` - decyzje architektoniczne.
+13. `docs/12_RESOURCE_AND_ARCHITECTURE_PLAN.md` - audyt obecnego stanu i plan uproszczenia.
 
 ## Zasady Projektowe
 

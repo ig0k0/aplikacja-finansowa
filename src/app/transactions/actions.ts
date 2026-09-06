@@ -16,6 +16,7 @@ export async function createTransactionAction(formData: FormData) {
     transactionDate: String(formData.get("transactionDate") ?? ""),
     amount: String(formData.get("amount") ?? ""),
     categoryId: String(formData.get("categoryId") ?? ""),
+    financialAccountId: String(formData.get("financialAccountId") ?? ""),
     description: String(formData.get("description") ?? ""),
     merchantName: String(formData.get("merchantName") ?? ""),
   });
@@ -33,6 +34,7 @@ export async function createTransactionAction(formData: FormData) {
       transactionDate: parsed.data.transactionDate,
       amountMinor: parseAmountToMinor(parsed.data.amount),
       categoryId: parsed.data.categoryId,
+      financialAccountId: parsed.data.financialAccountId || null,
       description: parsed.data.description,
       merchantName: parsed.data.merchantName,
       isRecurring: String(formData.get("isRecurring") ?? "") === "1",

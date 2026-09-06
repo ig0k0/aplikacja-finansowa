@@ -14,6 +14,7 @@ export const manualTransactionSchema = z.object({
   transactionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data jest wymagana."),
   amount: amountSchema,
   categoryId: z.string().min(1, "Kategoria jest wymagana."),
+  financialAccountId: z.string().optional(),
   description: z.string().trim().min(1, "Opis jest wymagany.").max(200),
   merchantName: z.string().trim().max(120).optional(),
 });

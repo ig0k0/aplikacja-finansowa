@@ -4,22 +4,6 @@ import { aiSuggestions } from "./schema";
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/time";
 
-export function supersedePendingSuggestionsForTransaction(
-  userId: string,
-  transactionId: string,
-) {
-  db.update(aiSuggestions)
-    .set({ status: "superseded" })
-    .where(
-      and(
-        eq(aiSuggestions.userId, userId),
-        eq(aiSuggestions.transactionId, transactionId),
-        eq(aiSuggestions.status, "pending"),
-      ),
-    )
-    .run();
-}
-
 export function insertAiSuggestion(input: {
   userId: string;
   transactionId: string;
@@ -50,6 +34,22 @@ export function insertAiSuggestion(input: {
       needsManualReview: input.needsManualReview,
       status: "pending",
       createdAt: now,
+    })
+    .onConflictDoUpdate({
+      target: aiSuggestions.transactionId,
+      set: {
+        userId: input.userId,
+        provider: input.provider,
+        model: input.model,
+        suggestedCategoryId: input.suggestedCategoryId,
+        suggestedDescription: input.suggestedDescription,
+        suggestedTagsJson: input.suggestedTagsJson,
+        confidence: input.confidence,
+        reasonCode: input.reasonCode,
+        needsManualReview: input.needsManualReview,
+        status: "pending",
+        createdAt: now,
+      },
     })
     .run();
 

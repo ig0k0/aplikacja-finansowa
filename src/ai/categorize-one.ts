@@ -2,13 +2,15 @@ import {
   aiCategorizationResponseSchema,
   extractJsonObjectFromModelText,
 } from "@/domain/ai-categorization";
-import { insertAiSuggestion, supersedePendingSuggestionsForTransaction } from "@/db/ai-suggestions";
+import { insertAiSuggestion } from "@/db/ai-suggestions";
 import { listCategoriesForUser } from "@/db/categories";
 import { findCorrectionMemoryCategoryId } from "@/db/correction-memory";
 import {
   applyAiCategorizationToTransaction,
   applyMemoryHitToTransaction,
+  claimTransactionForCategorization,
   getTransactionForUser,
+  setTransactionCategorizationStatusForUser,
 } from "@/db/transactions";
 import { getAiRuntimeConfig, isAiEnabled } from "@/lib/ai-config";
 import { categoriesForPromptByType } from "./category-catalog";
@@ -24,8 +26,14 @@ export type CategorizeOutcome =
 export async function categorizeTransactionForUser(
   userId: string,
   transactionId: string,
+  options: { allowRetry?: boolean } = { allowRetry: true },
 ): Promise<CategorizeOutcome> {
   const config = getAiRuntimeConfig();
+
+  if (!claimTransactionForCategorization(userId, transactionId, options)) {
+    return { status: "error", message: "Transakcja jest juz przetwarzana albo nie oczekuje na kategoryzacje." };
+  }
+
   const transaction = getTransactionForUser(userId, transactionId);
 
   if (!transaction) {
@@ -45,6 +53,7 @@ export async function categorizeTransactionForUser(
   }
 
   if (!isAiEnabled(config)) {
+    setTransactionCategorizationStatusForUser(userId, transactionId, "review");
     return { status: "disabled" };
   }
 
@@ -81,6 +90,7 @@ export async function categorizeTransactionForUser(
     rawContent = await completeChatText(config, systemPrompt, userPrompt);
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI niedostepne.";
+    setTransactionCategorizationStatusForUser(userId, transactionId, "failed");
     return { status: "error", message };
   }
 
@@ -89,12 +99,14 @@ export async function categorizeTransactionForUser(
   try {
     parsedJson = extractJsonObjectFromModelText(rawContent);
   } catch {
+    setTransactionCategorizationStatusForUser(userId, transactionId, "failed");
     return { status: "error", message: "Model nie zwrocil poprawnego JSON." };
   }
 
   const validated = aiCategorizationResponseSchema.safeParse(parsedJson);
 
   if (!validated.success) {
+    setTransactionCategorizationStatusForUser(userId, transactionId, "failed");
     return { status: "error", message: "Walidacja odpowiedzi modelu nie powiodla sie." };
   }
 
@@ -113,8 +125,6 @@ export async function categorizeTransactionForUser(
   const needsReviewByModel = data.needsManualReview || confidence < autoThreshold;
   const needsManualReviewFlag =
     confidence < reviewThreshold || needsReviewByModel || categoryId === null;
-
-  supersedePendingSuggestionsForTransaction(userId, transactionId);
 
   insertAiSuggestion({
     userId,
@@ -139,6 +149,7 @@ export async function categorizeTransactionForUser(
       description: data.description,
       tagListJson,
       verificationStatus: "needs_review",
+      categorizationStatus: "review",
     });
 
     return { status: "ai_review", categoryId };
@@ -152,6 +163,7 @@ export async function categorizeTransactionForUser(
       description: data.description,
       tagListJson,
       verificationStatus: "auto_categorized",
+      categorizationStatus: "done",
     });
 
     return { status: "ai_auto", categoryId };
@@ -164,6 +176,7 @@ export async function categorizeTransactionForUser(
     description: data.description,
     tagListJson,
     verificationStatus: "needs_review",
+    categorizationStatus: "review",
   });
 
   return { status: "ai_review", categoryId };

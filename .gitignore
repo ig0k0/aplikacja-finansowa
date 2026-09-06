@@ -1,6 +1,8 @@
 node_modules
 .next
 out
+graphify-out
+*.tsbuildinfo
 data
 backups
 .env

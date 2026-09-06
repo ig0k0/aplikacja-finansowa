@@ -62,9 +62,9 @@ flowchart TD
   validation --> preview["Podglad"]
   preview --> dedupe["Deduplikacja"]
   dedupe --> fx["Przeliczenie walut"]
-  fx --> ai["AI kategoryzacji"]
-  ai --> commit["Zapis transakcyjny"]
+  fx --> commit["Zapis transakcyjny"]
   commit --> summary["Podsumowanie importu"]
+  commit --> ai["Opcjonalna kategoryzacja po imporcie"]
 ```
 
 ## 5. Walidacja
@@ -82,8 +82,9 @@ Walidacje ostrzegawcze:
 - brak kontrahenta,
 - brak salda po transakcji,
 - nietypowy format opisu,
-- transakcja walutowa bez kursu,
 - plik wyglada na wycinek okresu, a nie pelny eksport.
+
+Transakcja w walucie innej niz PLN bez zmapowanego kursu PLN jest błędem krytycznym: importer nie może zgadywać wartości raportowej.
 
 ## 6. Deduplikacja
 
@@ -103,6 +104,10 @@ Proponowane pola do `dedupeKey`:
 - identyfikator bankowy, jesli istnieje.
 
 System powinien pokazywac liczbe pominietych duplikatow po imporcie.
+
+Nowe klucze sa zapisywane jako hashowany wariant `v2`; nie zawieraja czytelnego opisu transakcji. Historyczne klucze zostaly jednorazowo przeniesione do tego samego wariantu.
+
+AI nie jest krokiem importu. Po zapisie niepewne transakcje trafiaja do kolejki weryfikacji; reguly i opcjonalne AI sa uruchamiane osobno. Awaria modelu nie moze opoznic ani cofnac poprawnego importu.
 
 ## 7. mBank
 

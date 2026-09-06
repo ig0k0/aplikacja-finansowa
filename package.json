@@ -3,19 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.9 <25"
+  },
   "scripts": {
+    "prebuild": "node src/scripts/assert-node-version.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --max-warnings=0",
+    "lint": "eslint src next.config.ts --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:migrate-dedupe": "node --import tsx src/scripts/migrate-dedupe-keys.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "db:compact": "node --import tsx src/scripts/compact-database.ts",
     "backup:create": "tsx src/scripts/backup.ts create",
     "backup:verify": "tsx src/scripts/backup.ts verify",
     "backup:restore": "tsx src/scripts/backup.ts restore",
     "backup:scheduled": "tsx src/scripts/scheduled-backup.ts",
-    "verify:foundation": "tsx src/scripts/verify-foundation.ts"
+    "benchmark:import": "node --import tsx src/scripts/benchmark-import.ts",
+    "test:e2e": "node --import tsx src/scripts/e2e-release.ts",
+    "verify:foundation": "node --import tsx src/scripts/verify-foundation.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",

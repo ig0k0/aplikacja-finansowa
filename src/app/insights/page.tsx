@@ -2,15 +2,19 @@ import Link from "next/link";
 import { currentMonthInputValue } from "@/domain/budgets";
 import {
   compareExpenseCategoriesMonthOverMonth,
+  encodeInsightsCategoryId,
   forecastMonthEndExpenses,
   getPreviousMonthLabel,
+  listCategoryExpenseTransactionsForMonth,
   listHeuristicRecurringCandidates,
+  resolveInsightsCategoryDrilldown,
   summarizeRecurringExpensesByCategoryForMonth,
   summarizeRollingMonthsForUser,
+  summarizeSingleCategoryExpenseTrend,
   summarizeTopCategoryExpenseTrends,
   totalRecurringExpensesForMonth,
 } from "@/db/analytics";
-import { formatCurrencyMinor } from "@/lib/format";
+import { formatCurrencyMinor, formatDate } from "@/lib/format";
 import { requireUser } from "@/lib/session";
 import { CategoryExpenseTrendChart } from "./category-expense-trend-chart";
 import { MonthlyTrendChart } from "./monthly-trend-chart";
@@ -20,8 +24,19 @@ export const dynamic = "force-dynamic";
 type InsightsPageProps = {
   searchParams?: Promise<{
     month?: string;
+    categoryId?: string;
   }>;
 };
+
+function insightsHref(month: string, categoryId?: string) {
+  const params = new URLSearchParams({ month });
+
+  if (categoryId) {
+    params.set("categoryId", categoryId);
+  }
+
+  return `/insights?${params.toString()}`;
+}
 
 function normalizeMonth(month?: string) {
   if (month && /^\d{4}-\d{2}$/.test(month)) {
@@ -35,6 +50,10 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
   const user = await requireUser();
   const params = searchParams ? await searchParams : {};
   const month = normalizeMonth(params.month);
+  const categoryIdParam = params.categoryId?.trim() || undefined;
+  const drilldown = categoryIdParam
+    ? resolveInsightsCategoryDrilldown(user.id, categoryIdParam)
+    : null;
   const previousMonthLabel = getPreviousMonthLabel(month);
 
   const momRows = compareExpenseCategoriesMonthOverMonth(user.id, month);
@@ -48,6 +67,18 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
   const categoryTrendSeries = summarizeTopCategoryExpenseTrends(user.id, month, 12, 5);
   const hasCategoryTrendData = categoryTrendSeries.some((series) =>
     series.points.some((point) => point.spentPlnMinor > 0),
+  );
+  const singleCategoryTrend =
+    drilldown !== null
+      ? summarizeSingleCategoryExpenseTrend(user.id, drilldown.categoryId, month, 12)
+      : null;
+  const drilldownTransactions =
+    drilldown !== null
+      ? listCategoryExpenseTransactionsForMonth(user.id, drilldown.categoryId, month)
+      : [];
+  const drilldownMonthTotal = drilldownTransactions.reduce(
+    (sum, row) => sum + row.amountPlnMinor,
+    0,
   );
 
   const recommendations: string[] = [];
@@ -98,6 +129,9 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
 
       <section className="card" style={{ marginBottom: 24 }}>
         <form className="form-grid" action="/insights">
+          {categoryIdParam ? (
+            <input name="categoryId" type="hidden" value={categoryIdParam} />
+          ) : null}
           <label className="field">
             Miesiac
             <input className="input" name="month" type="month" defaultValue={month} />
@@ -107,6 +141,63 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
           </button>
         </form>
       </section>
+
+      {categoryIdParam && drilldown === null ? (
+        <p className="card error" style={{ marginBottom: 24 }}>
+          Nie znaleziono kategorii.{" "}
+          <Link href={insightsHref(month)}>Wroc do widoku ogolnego</Link>.
+        </p>
+      ) : null}
+
+      {drilldown && singleCategoryTrend ? (
+        <section className="card" style={{ marginBottom: 24 }}>
+          <div className="card-heading-row">
+            <div>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Drill-down kategorii
+              </p>
+              <h2 style={{ margin: 0 }}>{drilldown.categoryName}</h2>
+            </div>
+            <Link className="button button-secondary" href={insightsHref(month)}>
+              Wroc do wszystkich kategorii
+            </Link>
+          </div>
+          <p className="muted">
+            Trend 12 miesiecy oraz transakcje w <strong>{month}</strong> (suma w tabeli:{" "}
+            {formatCurrencyMinor(drilldownMonthTotal)}).
+          </p>
+          <CategoryExpenseTrendChart series={[singleCategoryTrend]} />
+          {drilldownTransactions.length === 0 ? (
+            <p className="muted">Brak wydatkow w tej kategorii w wybranym miesiacu.</p>
+          ) : (
+            <div className="table-wrap" style={{ marginTop: 16 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Opis</th>
+                    <th>Kwota</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {drilldownTransactions.map((row) => (
+                    <tr key={row.id}>
+                      <td>{formatDate(row.transactionDate)}</td>
+                      <td>
+                        {row.description}
+                        {row.merchantName ? (
+                          <p className="muted table-note">{row.merchantName}</p>
+                        ) : null}
+                      </td>
+                      <td>{formatCurrencyMinor(row.amountPlnMinor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section className="card" style={{ marginBottom: 24 }}>
         <h2 style={{ marginTop: 0 }}>Trend 12 miesiecy</h2>
@@ -128,7 +219,18 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
           miesiacach kalendarzowych konczacych sie na tym miesiacu.
         </p>
         {hasCategoryTrendData ? (
-          <CategoryExpenseTrendChart series={categoryTrendSeries} />
+          <>
+            <CategoryExpenseTrendChart series={categoryTrendSeries} />
+            <ul className="insights-chart-legend" style={{ marginTop: 12 }}>
+              {categoryTrendSeries.map((series) => (
+                <li key={series.categoryId ?? "none"}>
+                  <Link href={insightsHref(month, encodeInsightsCategoryId(series.categoryId))}>
+                    Szczegoly: {series.categoryName}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
         ) : (
           <p className="muted">Brak wydatkow w kategoriach w tym oknie.</p>
         )}
@@ -253,7 +355,11 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
               <tbody>
                 {momRows.map((row) => (
                   <tr key={row.categoryId ?? "none"}>
-                    <td>{row.categoryName}</td>
+                    <td>
+                      <Link href={insightsHref(month, encodeInsightsCategoryId(row.categoryId))}>
+                        {row.categoryName}
+                      </Link>
+                    </td>
                     <td>{formatCurrencyMinor(row.currentPlnMinor)}</td>
                     <td>{formatCurrencyMinor(row.previousPlnMinor)}</td>
                     <td>{formatCurrencyMinor(row.deltaPlnMinor)}</td>

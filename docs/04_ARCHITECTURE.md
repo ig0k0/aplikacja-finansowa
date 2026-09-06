@@ -66,11 +66,11 @@ Przechowuje profil uzytkownika oraz ustawienia prywatnosci, waluty bazowej i pre
 
 ### Financial Accounts
 
-Reprezentuje konta bankowe, konta fintech, gotowke i konta inwestycyjne. Kazde konto nalezy do jednego uzytkownika.
+Reprezentuje konta bankowe, konta fintech, gotowke i konta inwestycyjne. Kazde konto nalezy do jednego uzytkownika. Uzytkownik zarzadza aktywnymi kontami w `/settings/accounts`; konto mozna przypisac przy wpisie recznym i imporcie. Archiwizacja zachowuje historię transakcji, ale ukrywa konto z nowych wyborow.
 
 ### Transactions
 
-Centralny modul zapisujacy przychody, wydatki, transfery i operacje inwestycyjne. Wszystkie raporty powinny korzystac z tego modulu albo z przygotowanych agregacji.
+Centralny modul zapisujacy przychody, wydatki, transfery i operacje inwestycyjne. `@/db/transaction-service` buduje rekordy dla wpisu recznego i importu oraz wymusza przynaleznosc kategorii do uzytkownika. Wpis reczny konczy kategoryzacje jako `verified/done`; import jako `needs_review/pending`. Wszystkie raporty powinny korzystac z tego modulu albo z przygotowanych agregacji.
 
 ### Categories
 
@@ -106,18 +106,18 @@ flowchart TD
   normalize --> validate["Walidacja danych"]
   validate --> preview["Podglad importu"]
   preview --> dedupe["Wykrywanie duplikatow"]
-  dedupe --> aiSuggest["Sugestie AI"]
-  aiSuggest --> save["Zapis transakcyjny"]
-  save --> review["Kolejka weryfikacji"]
+  dedupe --> save["Zapis transakcyjny"]
+  save --> review["Kolejka weryfikacji / pending"]
+  review --> aiSuggest["Opcjonalne sugestie AI"]
 ```
 
 Zasady:
 
 - Plik zrodlowy jest przetwarzany jako import batch.
-- Parser bankowy tworzy format kanoniczny transakcji.
+- Parser bankowy tworzy format kanoniczny transakcji. Upload ma limit 15 MB dla CSV/XLSX i 8 MB dla PDF/obrazu oraz maksymalnie 50 000 wierszy.
 - Import nie powinien zapisywac czesci danych, jesli caly batch nie przejdzie walidacji krytycznej.
 - Deduplikacja powinna uzywac stabilnego odcisku transakcji.
-- AI jest etapem wzbogacania, nie etapem prawdy.
+- AI jest osobnym etapem wzbogacania uruchamianym po zapisie, nie etapem prawdy ani warunkiem importu. Obraz wymaga jawnego zaznaczenia OCR; PDF nie uruchamia automatycznie OCR.
 - Transakcje niepewne pozostaja widoczne w kolejce weryfikacji.
 
 ## 6. Przeplyw Kategoryzacji AI
@@ -136,6 +136,8 @@ flowchart TD
 ```
 
 AI nie moze zwracac dowolnego tekstu jako danych produkcyjnych. Odpowiedz modelu powinna byc walidowana schematem.
+
+Stan techniczny kategoryzacji jest niezalezny od statusu weryfikacji: `pending`, `processing`, `done`, `review`, `failed`. Batch na `/review` atomowo przejmuje tylko rekordy `pending`; rekord `processing` starszy niz 15 minut wraca do `pending`. Tabela `ai_suggestions` przechowuje jedna aktualna sugestie na transakcje.
 
 ## 7. Granice Danych
 

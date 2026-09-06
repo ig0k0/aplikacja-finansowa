@@ -12,7 +12,7 @@ Data dokumentu: 2026-05-01
 | --- | --- |
 | **Zakonczone w kodzie (MVP)** | Etapy **0–8** — pelny produkt self-hosted z [backlogiem](#backlog) w toku. |
 | **Backlog — zrobione i zweryfikowane** | Parsery bankow (ZEN, mBank, Revolut, PKO), wykres top kategorii, **ceny aktywow PLN** (NBP+Stooq), **utwardzenie VPS/HTTPS (MVP)** — patrz [rejestr](#rejestr-postepu-backlogu). |
-| **Pierwszy nastepny krok (backlog)** | Masowa akceptacja `/review`, UI pamieci korekt, E2E testy — lub rozszerzenia opcjonalne z sekcji Backlog. |
+| **Pierwszy nastepny krok (backlog)** | Testy E2E, rozszerzenia opcjonalne z sekcji Backlog. |
 
 **Aktualizacja tabeli etapow:** 2026-05-01.
 
@@ -133,7 +133,7 @@ Kryterium zakonczenia:
 
 Cel: zmniejszyc reczna prace przy kategoriach.
 
-**Implementacja (MVP, 2026-05-01):** dziala adapter HTTP do API zgodnego z OpenAI (`/v1/chat/completions`), tryb `AI_MODE=disabled|local|external`, progi `AI_CONFIDENCE_*`, kolejka `/review`, pamiec korekt przy zapisie kategorii (opcja „Zapamietaj”), tabele `ai_suggestions` i `user_correction_memory`, UI regul: `/settings/ai-memory`. Nie zaimplementowano masowej akceptacji wielu transakcji naraz.
+**Implementacja (MVP, 2026-05-01):** dziala adapter HTTP do API zgodnego z OpenAI (`/v1/chat/completions`), tryb `AI_MODE=disabled|local|external`, progi `AI_CONFIDENCE_*`, kolejka `/review`, pamiec korekt przy zapisie kategorii (opcja „Zapamietaj”), tabele `ai_suggestions` i `user_correction_memory`, UI regul: `/settings/ai-memory`, **masowa akceptacja** sugestii AI na `/review` (`acceptAiSuggestionsBulkAction`, do 25 pozycji).
 
 Zakres:
 
@@ -237,6 +237,8 @@ Odznaczenia po **kodzie + `npm run build` + `npm run verify:foundation`** (oraz 
 | 2026-05-20 | Ceny aktywow + kursy USD/EUR → **PLN** | **Zrobione** | NBP + Stooq, przycisk na `/investments`, migracja `0009_pricing` |
 | 2026-05-20 | VPS/HTTPS (MVP) | **Zrobione** | `middleware`, `/api/health`, limit logowania, `deploy/` + Caddy |
 | 2026-05-20 | UI pamieci korekt `/settings/ai-memory` | **Zrobione** | lista, dodawanie, edycja kategorii, usuwanie |
+| 2026-05-20 | Masowa akceptacja sugestii AI `/review` | **Zrobione** | przycisk „Zaakceptuj sugestie AI (N)”, prog `AI_CONFIDENCE_REVIEW` |
+| 2026-05-20 | Drill-down kategorii `/insights` | **Zrobione** | link z tabeli MoM i legendy wykresu, sekcja szczegolow |
 
 ## Backlog
 
@@ -249,8 +251,8 @@ Lista rzeczy **swiadomie poza zamknietym MVP i Etapem 8** albo wymagajacych osob
 
 ### Analityka i AI
 
-- [x] **Kolejne wykresy / drill-down** na `/insights` — **MVP:** wykres top 5 kategorii (12 mies.). Dalej: drill-down po jednej kategorii.
-- **Masowa akceptacja** w kolejce `/review` (jesli nadal poza kodem).
+- [x] **Kolejne wykresy / drill-down** na `/insights` — top 5 (12 mies.) + drill-down: `?categoryId=...`, trend i lista transakcji w miesiacu.
+- [x] **Masowa akceptacja** w kolejce `/review` — sugestie z kategoria i pewnoscia &gt;= `AI_CONFIDENCE_REVIEW` (max 25).
 - [x] **UI do edycji regul pamieci korekt** — `/settings/ai-memory` (lista, dodawanie, zmiana kategorii, usuwanie).
 - Rozszerzenia AI poza obecnym MVP (jasny zakres + limity kosztow).
 
@@ -305,6 +307,7 @@ Checklista do przejscia **przed uznaniem instalacji za „sprawdzona”** albo p
 | C3 | Zmiana kategorii z listy | Zapis bez bledu. |
 | C4 | Raport miesieczny / roczny | Kwoty zgodne z oczekiwaniami dla znanych danych testowych. |
 | C5 | `/insights` — zmiana miesiaca, wykres 12 mies. | Dane i wykres sensowne przy niepustej historii. |
+| C6 | Drill-down kategorii (`/insights?categoryId=...`) | Trend jednej kategorii + tabela transakcji w miesiacu; link „Wroc”. |
 
 ### D. Import (neutralny)
 
@@ -322,6 +325,7 @@ Checklista do przejscia **przed uznaniem instalacji za „sprawdzona”** albo p
 | --- | --- | --- |
 | E1 | Transakcja w kolejce `/review` | Mozliwa zmiana kategorii i zapis. |
 | E2 | Uruchomienie AI dla pozycji (jesli `AI_MODE` pozwala) | Sugestia albo kontrolowany blad; brak blokady calej aplikacji. |
+| E3 | Masowa akceptacja sugestii AI | Przycisk widoczny gdy sa kwalifikujace sie pozycje; licznik kolejki maleje. |
 
 ### F. Inwestycje
 

@@ -1,17 +1,24 @@
-import { and, asc, desc, eq, gte, like, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, like, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "./client";
 import { categories, transactions } from "./schema";
-import { createId } from "../lib/ids";
 import { nowIso } from "../lib/time";
 import type { TransactionType } from "../domain/transactions";
 import { monthDateRange } from "../domain/budgets";
 import { upsertCorrectionMemory } from "./correction-memory";
+import {
+  createManualTransactionThroughService,
+  ensureTransactionCategoryForUser,
+  type ManualTransactionRecord,
+} from "./transaction-service";
+
+export type { ManualTransactionRecord } from "./transaction-service";
 
 export type TransactionFilters = {
   type?: TransactionType;
   categoryId?: string;
   query?: string;
   verificationStatus?: string;
+  categorizationStatus?: string;
   sort?: "newest" | "oldest";
 };
 
@@ -25,61 +32,11 @@ export type TransactionListItem = {
   categoryId: string | null;
   categoryName: string | null;
   isRecurring: boolean;
+  categorizationStatus: string;
 };
-
-export type ManualTransactionRecord = {
-  userId: string;
-  type: TransactionType;
-  transactionDate: string;
-  amountMinor: number;
-  categoryId: string;
-  description: string;
-  merchantName?: string;
-  isRecurring?: boolean;
-};
-
-function ensureCategoryForUser(userId: string, categoryId: string) {
-  const category = db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(
-      and(
-        eq(categories.id, categoryId),
-        eq(categories.userId, userId),
-        eq(categories.isArchived, false),
-      ),
-    )
-    .get();
-
-  if (!category) {
-    throw new Error("Selected category does not belong to the current user.");
-  }
-}
 
 export function createManualTransaction(input: ManualTransactionRecord) {
-  ensureCategoryForUser(input.userId, input.categoryId);
-
-  const now = nowIso();
-
-  db.insert(transactions)
-    .values({
-      id: createId("txn"),
-      userId: input.userId,
-      categoryId: input.categoryId,
-      type: input.type,
-      transactionDate: input.transactionDate,
-      amountMinor: input.amountMinor,
-      currency: "PLN",
-      amountPlnMinor: input.amountMinor,
-      merchantName: input.merchantName || null,
-      description: input.description,
-      verificationStatus: "verified",
-      source: "manual",
-      isRecurring: input.isRecurring ?? false,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .run();
+  createManualTransactionThroughService(input);
 }
 
 export function updateTransactionCategoryForUser(
@@ -88,7 +45,7 @@ export function updateTransactionCategoryForUser(
   categoryId: string,
   options?: { rememberPattern?: boolean; isRecurring?: boolean },
 ) {
-  ensureCategoryForUser(userId, categoryId);
+  ensureTransactionCategoryForUser(userId, categoryId);
 
   const row = db
     .select({
@@ -108,6 +65,8 @@ export function updateTransactionCategoryForUser(
     .set({
       categoryId,
       verificationStatus: "verified",
+      categorizationStatus: "done",
+      categorizationStartedAt: null,
       updatedAt: nowIso(),
       ...(options?.isRecurring !== undefined ? { isRecurring: options.isRecurring } : {}),
     })
@@ -159,6 +118,10 @@ export function listTransactionsForUser(
     conditions.push(eq(transactions.verificationStatus, filters.verificationStatus));
   }
 
+  if (filters.categorizationStatus) {
+    conditions.push(eq(transactions.categorizationStatus, filters.categorizationStatus));
+  }
+
   const dateExpr =
     filters.sort === "oldest" ? asc(transactions.transactionDate) : desc(transactions.transactionDate);
   const createdExpr =
@@ -175,6 +138,7 @@ export function listTransactionsForUser(
       categoryId: transactions.categoryId,
       categoryName: categories.name,
       isRecurring: transactions.isRecurring,
+      categorizationStatus: transactions.categorizationStatus,
     })
     .from(transactions)
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
@@ -360,13 +324,15 @@ export function applyMemoryHitToTransaction(
   transactionId: string,
   categoryId: string,
 ) {
-  ensureCategoryForUser(userId, categoryId);
+  ensureTransactionCategoryForUser(userId, categoryId);
 
   const result = db
     .update(transactions)
     .set({
       categoryId,
       verificationStatus: "verified",
+      categorizationStatus: "done",
+      categorizationStartedAt: null,
       updatedAt: nowIso(),
     })
     .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
@@ -384,11 +350,12 @@ export function applyAiCategorizationToTransaction(input: {
   description?: string | null;
   tagListJson?: string | null;
   verificationStatus: "auto_categorized" | "needs_review";
+  categorizationStatus: "done" | "review";
 }) {
   const now = nowIso();
 
   if (input.categoryId) {
-    ensureCategoryForUser(input.userId, input.categoryId);
+    ensureTransactionCategoryForUser(input.userId, input.categoryId);
   }
 
   const nextDescription =
@@ -396,6 +363,8 @@ export function applyAiCategorizationToTransaction(input: {
 
   const base = {
     verificationStatus: input.verificationStatus,
+    categorizationStatus: input.categorizationStatus,
+    categorizationStartedAt: null,
     updatedAt: now,
   };
 
@@ -419,5 +388,63 @@ export function applyAiCategorizationToTransaction(input: {
       ...base,
     })
     .where(and(eq(transactions.id, input.transactionId), eq(transactions.userId, input.userId)))
+    .run();
+}
+
+export function claimTransactionForCategorization(
+  userId: string,
+  transactionId: string,
+  options: { allowRetry?: boolean } = {},
+) {
+  const allowedStatuses = options.allowRetry ? ["pending", "review", "failed"] : ["pending"];
+  const result = db
+    .update(transactions)
+    .set({
+      categorizationStatus: "processing",
+      categorizationStartedAt: nowIso(),
+      updatedAt: nowIso(),
+    })
+    .where(
+      and(
+        eq(transactions.id, transactionId),
+        eq(transactions.userId, userId),
+        inArray(transactions.categorizationStatus, allowedStatuses),
+      ),
+    )
+    .run();
+
+  return result.changes === 1;
+}
+
+export function resetStaleCategorizationClaimsForUser(userId: string, staleBefore: string) {
+  return db
+    .update(transactions)
+    .set({
+      categorizationStatus: "pending",
+      categorizationStartedAt: null,
+      updatedAt: nowIso(),
+    })
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.categorizationStatus, "processing"),
+        lte(transactions.categorizationStartedAt, staleBefore),
+      ),
+    )
+    .run().changes;
+}
+
+export function setTransactionCategorizationStatusForUser(
+  userId: string,
+  transactionId: string,
+  categorizationStatus: "pending" | "review" | "failed",
+) {
+  db.update(transactions)
+    .set({
+      categorizationStatus,
+      categorizationStartedAt: null,
+      updatedAt: nowIso(),
+    })
+    .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
     .run();
 }

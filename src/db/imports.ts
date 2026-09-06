@@ -1,10 +1,15 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { recordAuditEvent } from "./audit";
 import { db } from "./client";
-import { categories, importBatches, importedRows, transactions } from "./schema";
+import { importBatches, importedRows, transactions } from "./schema";
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/time";
 import type { ImportMapping, NormalizedImportRow } from "../domain/imports";
+import {
+  createTransactionInsertValues,
+  ensureTransactionCategoryForUser,
+} from "./transaction-service";
+import { ensureFinancialAccountForUser } from "./financial-accounts";
 
 export type ImportPreviewInput = {
   userId: string;
@@ -12,6 +17,9 @@ export type ImportPreviewInput = {
   fileType: string;
   fileHash: string;
   sourceInstitution: string;
+  financialAccountId?: string | null;
+  parseDurationMs?: number;
+  normalizeDurationMs?: number;
   mapping: ImportMapping;
   rows: {
     rowNumber: number;
@@ -21,26 +29,23 @@ export type ImportPreviewInput = {
   }[];
 };
 
-function ensureCategoryForUser(userId: string, categoryId: string) {
-  const category = db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(
-      and(
-        eq(categories.id, categoryId),
-        eq(categories.userId, userId),
-        eq(categories.isArchived, false),
-      ),
-    )
-    .get();
+const SQLITE_IN_CHUNK_SIZE = 400;
+const SQLITE_INSERT_CHUNK_SIZE = 40;
+const SQLITE_PREVIEW_INSERT_CHUNK_SIZE = 100;
 
-  if (!category) {
-    throw new Error("Selected import category does not belong to the current user.");
+function chunks<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
   }
+
+  return result;
 }
 
 export function createImportPreview(input: ImportPreviewInput) {
-  ensureCategoryForUser(input.userId, input.mapping.categoryId);
+  ensureTransactionCategoryForUser(input.userId, input.mapping.categoryId);
+  ensureFinancialAccountForUser(input.userId, input.financialAccountId);
 
   const now = nowIso();
   const batchId = createId("imp");
@@ -52,6 +57,7 @@ export function createImportPreview(input: ImportPreviewInput) {
         id: batchId,
         userId: input.userId,
         sourceInstitution: input.sourceInstitution,
+        financialAccountId: input.financialAccountId ?? null,
         fileName: input.fileName,
         fileType: input.fileType,
         fileHash: input.fileHash,
@@ -63,25 +69,45 @@ export function createImportPreview(input: ImportPreviewInput) {
       })
       .run();
 
-    for (const row of input.rows) {
-      db.insert(importedRows)
-        .values({
+    const previewRows = input.rows.map((row) => ({
           id: createId("row"),
           importBatchId: batchId,
           rowNumber: row.rowNumber,
-          rawDataJson: JSON.stringify(row.raw),
+          // Po podgladzie surowy wiersz nie jest potrzebny do finalnego zapisu.
+          // Trzymamy tylko rekord kanoniczny lub komunikat bledu, aby nie dublowac
+          // wrazliwych danych importu w SQLite.
+          rawDataJson: "{}",
           normalizedDataJson: row.normalized ? JSON.stringify(row.normalized) : null,
           status: row.error ? "failed" : "preview",
           errorMessage: row.error,
-        })
-        .run();
+        }));
+
+    for (const group of chunks(previewRows, SQLITE_PREVIEW_INSERT_CHUNK_SIZE)) {
+      db.insert(importedRows).values(group).run();
     }
+  });
+
+  recordAuditEvent({
+    userId: input.userId,
+    action: "import_preview_created",
+    meta: {
+      batchId,
+      fileType: input.fileType,
+      rowsTotal: input.rows.length,
+      rowsFailed: failedRows,
+      parseDurationMs: input.parseDurationMs ?? null,
+      normalizeDurationMs: input.normalizeDurationMs ?? null,
+    },
   });
 
   return batchId;
 }
 
-export function getImportPreviewForUser(userId: string, batchId: string) {
+export function getImportPreviewForUser(
+  userId: string,
+  batchId: string,
+  options: { rowLimit?: number } = {},
+) {
   const batch = db
     .select()
     .from(importBatches)
@@ -92,82 +118,160 @@ export function getImportPreviewForUser(userId: string, batchId: string) {
     return null;
   }
 
-  const rows = db
+  const rowsQuery = db
     .select()
     .from(importedRows)
     .where(eq(importedRows.importBatchId, batchId))
-    .orderBy(asc(importedRows.rowNumber))
-    .all();
+    .orderBy(asc(importedRows.rowNumber));
+  const rows = options.rowLimit ? rowsQuery.limit(options.rowLimit).all() : rowsQuery.all();
 
   return { batch, rows };
 }
 
-function findDuplicate(userId: string, dedupeKey: string) {
-  return db
-    .select({ id: transactions.id })
-    .from(transactions)
-    .where(and(eq(transactions.userId, userId), eq(transactions.dedupeKey, dedupeKey)))
-    .get();
+function findTransactionsByDedupeKey(userId: string, dedupeKeys: string[]) {
+  const result = new Map<string, string>();
+
+  for (const group of chunks(dedupeKeys, SQLITE_IN_CHUNK_SIZE)) {
+    if (group.length === 0) {
+      continue;
+    }
+
+    const rows = db
+      .select({ id: transactions.id, dedupeKey: transactions.dedupeKey })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          inArray(transactions.dedupeKey, group),
+        ),
+      )
+      .all();
+
+    for (const row of rows) {
+      if (row.dedupeKey) {
+        result.set(row.dedupeKey, row.id);
+      }
+    }
+  }
+
+  return result;
 }
 
 export function confirmImportForUser(userId: string, batchId: string) {
+  const persistStartedAt = Date.now();
   const preview = getImportPreviewForUser(userId, batchId);
 
   if (!preview) {
     throw new Error("Import batch was not found for the current user.");
   }
 
+  if (preview.batch.status === "imported") {
+    throw new Error("Ten import zostal juz zapisany.");
+  }
+
+  const mapping = JSON.parse(preview.batch.mappingJson) as ImportMapping;
+  ensureTransactionCategoryForUser(userId, mapping.categoryId);
+  ensureFinancialAccountForUser(userId, preview.batch.financialAccountId);
+
   let imported = 0;
   let skippedDuplicate = 0;
   let failed = 0;
-  const now = nowIso();
 
   db.transaction(() => {
+    const normalizedRows: Array<{
+      rowId: string;
+      normalized: NormalizedImportRow;
+    }> = [];
+
     for (const row of preview.rows) {
       if (!row.normalizedDataJson) {
         failed += 1;
         continue;
       }
 
-      const normalized = JSON.parse(row.normalizedDataJson) as NormalizedImportRow;
+      normalizedRows.push({
+        rowId: row.id,
+        normalized: JSON.parse(row.normalizedDataJson) as NormalizedImportRow,
+      });
+    }
 
-      if (findDuplicate(userId, normalized.dedupeKey)) {
+    const existingByDedupeKey = findTransactionsByDedupeKey(
+      userId,
+      normalizedRows.map((row) => row.normalized.dedupeKey),
+    );
+    const pendingDedupeKeys = new Set<string>();
+    const candidates: Array<{
+      transactionId: string;
+      normalized: NormalizedImportRow;
+    }> = [];
+
+    for (const row of normalizedRows) {
+      const { normalized } = row;
+
+      if (
+        existingByDedupeKey.has(normalized.dedupeKey) ||
+        pendingDedupeKeys.has(normalized.dedupeKey)
+      ) {
         skippedDuplicate += 1;
-        db.update(importedRows)
-          .set({ status: "duplicate" })
-          .where(eq(importedRows.id, row.id))
-          .run();
         continue;
       }
 
-      const transactionId = createId("txn");
+      pendingDedupeKeys.add(normalized.dedupeKey);
+      candidates.push({
+        transactionId: createId("txn"),
+        normalized,
+      });
+    }
 
+    for (const group of chunks(candidates, SQLITE_INSERT_CHUNK_SIZE)) {
       db.insert(transactions)
-        .values({
-          id: transactionId,
-          userId,
-          categoryId: normalized.categoryId,
-          type: normalized.type,
-          transactionDate: normalized.transactionDate,
-          amountMinor: normalized.amountMinor,
-          currency: "PLN",
-          amountPlnMinor: normalized.amountMinor,
-          merchantName: normalized.merchantName,
-          description: normalized.description,
-          verificationStatus: "needs_review",
-          source: "import",
-          dedupeKey: normalized.dedupeKey,
-          isRecurring: false,
-          createdAt: now,
-          updatedAt: now,
-        })
+        .values(
+          group.map(({ transactionId, normalized }) => ({
+            ...createTransactionInsertValues({
+              id: transactionId,
+              userId,
+              categoryId: normalized.categoryId,
+              financialAccountId: preview.batch.financialAccountId,
+              type: normalized.type,
+              transactionDate: normalized.transactionDate,
+              postedDate: normalized.postedDate,
+              amountMinor: normalized.amountMinor,
+              amountPlnMinor: normalized.amountPlnMinor,
+              currency: normalized.currency,
+              fxRate: normalized.fxRate,
+              bankReference: normalized.bankReference,
+              merchantName: normalized.merchantName,
+              description: normalized.description,
+              verificationStatus: "needs_review",
+              categorizationStatus: "pending",
+              source: "import",
+              dedupeKey: normalized.dedupeKey,
+            }),
+          })),
+        )
+        .onConflictDoNothing()
         .run();
+    }
 
-      imported += 1;
-      db.update(importedRows)
-        .set({ status: "imported", transactionId })
-        .where(eq(importedRows.id, row.id))
-        .run();
+    const persistedByDedupeKey = findTransactionsByDedupeKey(
+      userId,
+      candidates.map((candidate) => candidate.normalized.dedupeKey),
+    );
+
+    for (const candidate of candidates) {
+      if (persistedByDedupeKey.get(candidate.normalized.dedupeKey) === candidate.transactionId) {
+        imported += 1;
+      } else {
+        skippedDuplicate += 1;
+      }
+    }
+
+    const finalizedRowIds = normalizedRows.map((row) => row.rowId);
+
+    for (const group of chunks(finalizedRowIds, SQLITE_IN_CHUNK_SIZE)) {
+      if (group.length > 0) {
+        db.delete(importedRows).where(inArray(importedRows.id, group)).run();
+      }
     }
 
     db.update(importBatches)
@@ -191,6 +295,7 @@ export function confirmImportForUser(userId: string, batchId: string) {
       imported,
       skippedDuplicate,
       failed,
+      persistDurationMs: Date.now() - persistStartedAt,
     },
   });
 

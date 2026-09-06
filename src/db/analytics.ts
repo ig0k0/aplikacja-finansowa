@@ -1,4 +1,4 @@
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { currentMonthInputValue, monthDateRange } from "@/domain/budgets";
 import { summarizeExpensesByCategoryForMonth, summarizeMonthForUser } from "./transactions";
 import { db } from "./client";
@@ -154,6 +154,123 @@ export function summarizeTopCategoryExpenseTrends(
       })),
     };
   });
+}
+
+export function encodeInsightsCategoryId(categoryId: string | null): string {
+  return categoryId ?? "none";
+}
+
+export function resolveInsightsCategoryDrilldown(
+  userId: string,
+  categoryIdParam: string,
+): { categoryId: string | null; categoryName: string } | null {
+  if (categoryIdParam === "none") {
+    return { categoryId: null, categoryName: "Bez kategorii" };
+  }
+
+  const row = db
+    .select({ id: categories.id, name: categories.name })
+    .from(categories)
+    .where(and(eq(categories.id, categoryIdParam), eq(categories.userId, userId)))
+    .get();
+
+  if (!row) {
+    return null;
+  }
+
+  return { categoryId: row.id, categoryName: row.name };
+}
+
+/** Trend wydatkow w jednej kategorii — okno `monthCount` miesiecy konczacych sie na `endMonth`. */
+export function summarizeSingleCategoryExpenseTrend(
+  userId: string,
+  categoryId: string | null,
+  endMonth: string,
+  monthCount = 12,
+): CategoryExpenseTrendSeries {
+  const startMonth = addCalendarMonths(endMonth, -(monthCount - 1));
+  const months: string[] = [];
+  let cur = startMonth;
+
+  for (let i = 0; i < monthCount; i++) {
+    months.push(cur);
+    cur = addCalendarMonths(cur, 1);
+  }
+
+  const { start, end } = lookbackInclusiveEndMonth(endMonth, monthCount);
+  const categoryFilter =
+    categoryId === null ? isNull(transactions.categoryId) : eq(transactions.categoryId, categoryId);
+
+  const aggregated = db
+    .select({
+      month: sql<string>`strftime('%Y-%m', ${transactions.transactionDate})`,
+      spentPlnMinor: sql<number>`coalesce(sum(${transactions.amountPlnMinor}), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.type, "expense"),
+        categoryFilter,
+        gte(transactions.transactionDate, start),
+        lte(transactions.transactionDate, end),
+      ),
+    )
+    .groupBy(sql`strftime('%Y-%m', ${transactions.transactionDate})`)
+    .all();
+
+  const spentByMonth = new Map(aggregated.map((row) => [row.month, row.spentPlnMinor]));
+  const resolved = resolveInsightsCategoryDrilldown(userId, encodeInsightsCategoryId(categoryId));
+
+  return {
+    categoryId,
+    categoryName: resolved?.categoryName ?? "Bez kategorii",
+    points: months.map((month) => ({
+      month,
+      spentPlnMinor: spentByMonth.get(month) ?? 0,
+    })),
+  };
+}
+
+export type CategoryExpenseTransactionRow = {
+  id: string;
+  transactionDate: string;
+  description: string;
+  merchantName: string | null;
+  amountPlnMinor: number;
+};
+
+export function listCategoryExpenseTransactionsForMonth(
+  userId: string,
+  categoryId: string | null,
+  month: string,
+  limit = 40,
+) {
+  const { start, end } = monthDateRange(month);
+  const categoryFilter =
+    categoryId === null ? isNull(transactions.categoryId) : eq(transactions.categoryId, categoryId);
+
+  return db
+    .select({
+      id: transactions.id,
+      transactionDate: transactions.transactionDate,
+      description: transactions.description,
+      merchantName: transactions.merchantName,
+      amountPlnMinor: transactions.amountPlnMinor,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.type, "expense"),
+        categoryFilter,
+        gte(transactions.transactionDate, start),
+        lte(transactions.transactionDate, end),
+      ),
+    )
+    .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
+    .limit(limit)
+    .all();
 }
 
 export function compareExpenseCategoriesMonthOverMonth(userId: string, month: string): CategoryMoMRow[] {

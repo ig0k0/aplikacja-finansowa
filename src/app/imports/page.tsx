@@ -47,15 +47,17 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
   const user = await requireUser();
   const params = searchParams ? await searchParams : {};
   const mappingPreset = findImportMappingPreset(params.preset?.trim());
-  const [{ listCategoriesForUser }, importsModule] = await Promise.all([
+  const [{ listCategoriesForUser }, { listFinancialAccountsForUser }, importsModule] = await Promise.all([
     import("@/db/categories"),
+    import("@/db/financial-accounts"),
     import("@/db/imports"),
   ]);
   const categories = listCategoriesForUser(user.id).filter(
     (category) => category.type === "income" || category.type === "expense",
   );
+  const accounts = listFinancialAccountsForUser(user.id);
   const preview = params.batchId
-    ? importsModule.getImportPreviewForUser(user.id, params.batchId)
+    ? importsModule.getImportPreviewForUser(user.id, params.batchId, { rowLimit: 50 })
     : null;
 
   return (
@@ -127,9 +129,26 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
               accept=".csv,.xlsx,.pdf,.png,.jpg,.jpeg,.webp,.xls"
             />
           </label>
+          <label className="field field-wide muted field-row">
+            <input name="allowOcr" type="checkbox" value="1" />
+            Uruchom OCR dla obrazu (PNG/JPEG/WebP) — wolniejsza, awaryjna sciezka importu.
+          </label>
           <label className="field">
             Zrodlo
             <input className="input" name="sourceInstitution" placeholder="np. mBank" />
+          </label>
+          <label className="field">
+            Konto finansowe
+            <select className="input" name="financialAccountId" defaultValue="">
+              <option value="" disabled>
+                Wybierz konto
+              </option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.institution} — {account.name} ({account.currency})
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             Typ domyslny
@@ -161,6 +180,10 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
             />
           </label>
           <label className="field">
+            Kolumna daty ksiegowania
+            <input className="input" name="postedDateColumn" placeholder="opcjonalnie" />
+          </label>
+          <label className="field">
             Kolumna kwoty
             <input
               className="input"
@@ -168,6 +191,14 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
               placeholder="np. Kwota"
               defaultValue={mappingPreset?.amountColumn ?? ""}
             />
+          </label>
+          <label className="field">
+            Kolumna waluty
+            <input className="input" name="currencyColumn" placeholder="opcjonalnie, np. Currency" />
+          </label>
+          <label className="field">
+            Kolumna kursu PLN
+            <input className="input" name="fxRateColumn" placeholder="wymagana dla walut innych niz PLN" />
           </label>
           <label className="field">
             Kolumna opisu
@@ -187,6 +218,10 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
               defaultValue={mappingPreset?.merchantColumn ?? ""}
             />
           </label>
+          <label className="field">
+            Kolumna referencji bankowej
+            <input className="input" name="bankReferenceColumn" placeholder="opcjonalnie" />
+          </label>
           <button className="button" type="submit">
             Pokaz podglad
           </button>
@@ -200,6 +235,9 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
             Plik: {preview.batch.fileName}. Wiersze: {preview.batch.rowsTotal}. Bledy:
             {" "}
             {preview.batch.rowsFailed}.
+            {preview.batch.rowsTotal > preview.rows.length
+              ? ` Pokazano pierwsze ${preview.rows.length} wierszy.`
+              : ""}
           </p>
           <form action={confirmImportAction} style={{ marginBottom: 16 }}>
             <input name="batchId" type="hidden" value={preview.batch.id} />
@@ -225,7 +263,7 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {preview.rows.slice(0, 50).map((row) => {
+                {preview.rows.map((row) => {
                   const normalized = parseNormalized(row.normalizedDataJson);
 
                   return (

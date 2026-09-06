@@ -85,6 +85,7 @@ Pola:
 - `currency`
 - `amountPlnMinor`
 - `fxRate`
+- `bankReference`
 - `merchantName`
 - `counterpartyName`
 - `description`
@@ -93,6 +94,8 @@ Pola:
 - `isRecurringCandidate`
 - `isTransferCandidate`
 - `verificationStatus`, np. `verified`, `needs_review`, `auto_categorized`
+- `categorizationStatus`, np. `pending`, `processing`, `done`, `review`, `failed`
+- `categorizationStartedAt`, ustawiane podczas ograniczonego batcha AI
 - `source`, np. `manual`, `import`
 - `importBatchId`
 - `dedupeKey`
@@ -105,6 +108,7 @@ Uwagi:
 - `amountPlnMinor` jest podstawa raportow.
 - `rawDescription` pochodzi z banku i nie powinien byc nadpisywany przez AI.
 - `description` moze byc wygenerowany lub poprawiony recznie.
+- `verificationStatus` opisuje zaufanie do kategorii, a `categorizationStatus` stan technicznego procesu; nie nalezy ich laczyc w jedno pole.
 
 ## 6. Category
 
@@ -192,7 +196,7 @@ Pola:
 Uwagi:
 
 - `rawDataJson` moze zawierac dane finansowe, wiec podlega zasadom prywatnosci.
-- W MVP mozna ograniczyc przechowywanie raw danych po udanym imporcie, jesli wymaga tego prywatnosc.
+- Po udanym imporcie lub wykryciu duplikatu wiersz jest usuwany. Wiersz bledny zachowuje rekord kanoniczny i komunikat, ale jego `rawDataJson` jest redagowany do `{}`.
 
 ## 10. ImportMapping
 
@@ -225,13 +229,13 @@ Pola:
 - `suggestedTagsJson`
 - `confidence`
 - `reasonCode`
-- `status`, np. `pending`, `accepted`, `rejected`, `superseded`
+- `status`, np. `pending`, `accepted`, `rejected`
 - `createdAt`
 
 Uwagi:
 
 - Nie przechowywac pelnych promptow z danymi finansowymi, jesli nie jest to konieczne.
-- Wystarczy zapisac minimalne metadane do audytu i poprawy jakosci.
+- Przechowywana jest jedna aktualna sugestia na transakcje; wynik finalny jest na `Transaction`.
 
 ## 12. UserCorrectionMemory
 
