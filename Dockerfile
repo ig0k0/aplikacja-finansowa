@@ -1,5 +1,9 @@
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
+# Narzedzia kompilacji: fallback dla better-sqlite3, gdy brak gotowego binarium (np. ARM64 na Oracle A1).
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json* ./
 RUN npm ci
 
@@ -24,4 +28,4 @@ COPY package.json ./
 COPY src ./src
 COPY --from=builder /app/migrations ./migrations
 EXPOSE 3000
-CMD ["sh", "-c", "npm run db:migrate && npm run start"]
+CMD ["sh", "-c", "if [ -z \"$SESSION_SECRET\" ] || [ \"$SESSION_SECRET\" = change-me-before-use ]; then echo 'SESSION_SECRET is missing or still the example value' >&2; exit 1; fi; npm run db:migrate && npm run start"]

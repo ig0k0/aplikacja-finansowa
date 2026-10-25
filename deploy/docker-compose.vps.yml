@@ -1,5 +1,10 @@
-# VPS: aplikacja za Caddy (HTTPS). Uruchom: docker compose -f deploy/docker-compose.vps.yml up -d
-# Wymaga: .env z SESSION_SECRET, COOKIE_SECURE=1, TRUST_PROXY=1
+# VPS: aplikacja za Caddy (HTTPS).
+# Uruchom z katalogu glownego projektu: docker compose -f deploy/docker-compose.vps.yml up -d --build
+# Wymaga: .env w katalogu glownym projektu (SESSION_SECRET, SEED_USER_*, BACKUP_ENCRYPTION_KEY ...)
+# oraz deploy/Caddyfile (kopia Caddyfile.example z Twoja domena).
+#
+# Uwaga: Compose interpoluje ${...} z pliku .env obok TEGO pliku (deploy/.env), a nie z katalogu
+# glownego, dlatego zmienne aplikacji sa przekazywane przez env_file, a nie przez ${...}.
 
 services:
   app:
@@ -8,23 +13,28 @@ services:
       dockerfile: Dockerfile
     expose:
       - "3000"
+    env_file:
+      - ../.env
+    # Wartosci ponizej nadpisuja .env — sciezki musza wskazywac na wolumeny w kontenerze.
     environment:
       DATABASE_URL: /app/data/app.db
-      NODE_ENV: production
-      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
-      COOKIE_SECURE: ${COOKIE_SECURE:-1}
-      TRUST_PROXY: ${TRUST_PROXY:-1}
-      LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-8}
-      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
       BACKUP_DESTINATION: /app/backups
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
-      GOOGLE_DRIVE_RCLONE_REMOTE: ${GOOGLE_DRIVE_RCLONE_REMOTE:-}
-      GOOGLE_DRIVE_RCLONE_PATH: ${GOOGLE_DRIVE_RCLONE_PATH:-}
-      RCLONE_CONFIG: ${RCLONE_CONFIG:-}
-      AI_MODE: ${AI_MODE:-disabled}
+      NODE_ENV: production
     volumes:
       - app-data:/app/data
       - ../backups:/app/backups
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
 
   caddy:
@@ -32,12 +42,14 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

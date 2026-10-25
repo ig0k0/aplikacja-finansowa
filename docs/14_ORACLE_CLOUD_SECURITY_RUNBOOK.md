@@ -21,7 +21,7 @@ Nie udajemy, że szyfrowanie woluminu wystarcza po kompromitacji konta `root`: d
 1. Włącz MFA dla konta Oracle Cloud oraz dla każdego konta z rolą administracyjną. Usuń nieużywane API keys i użytkowników.
 2. Utwórz osobny compartment `cfo-prod`. Nadaj codziennemu operatorowi wyłącznie niezbędne uprawnienia do tej instancji; nie używaj konta głównego do wdrożeń.
 3. Wybierz **home region** uważnie: Always Free compute i wolumeny muszą powstać w home region. Sprawdź w konsoli etykietę `Always Free Eligible` przed zatwierdzeniem. [Zasady home region](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm).
-4. Utwórz alarm budżetowy/kosztowy i przynajmniej comiesięczny przegląd Billing. Nie klikaj „upgrade” tylko po to, aby obejść chwilowy brak capacity.
+4. Utwórz alarm budżetowy/kosztowy i przynajmniej comiesięczny przegląd Billing. Upgrade do Pay As You Go jest dopuszczalny jako sposób na brak capacity A1 (patrz „Brak pojemności A1”), ale wyłącznie z ustawionym budżetem i alarmem.
 5. Zarezerwuj 50 GB boot volume. W całym tenancy Always Free jest 200 GB boot/block storage i najwyżej pięć backupów wolumenów; nie twórz zasobów poza home region, jeśli oczekujesz ceny 0. [Limity storage](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm).
 
 ## 2. Sieć OCI — reguły dokładne
@@ -43,20 +43,39 @@ Nie otwieraj ICMP, baz danych, Dockera, portu administracyjnego ani SSH dla `0.0
 1. Wybierz Ubuntu Server 24.04 LTS ARM64, `VM.Standard.A1.Flex`, 2 OCPU, 12 GB, 50 GB boot volume, publiczny IPv4 tylko jeśli aplikacja ma być dostępna bez VPN.
 2. Wygeneruj na **lokalnym komputerze administratora** nowy klucz ed25519 z silną frazą: `ssh-keygen -t ed25519 -a 64 -f ~/.ssh/cfo_oracle_ed25519 -C "cfo-oracle"`. W konsoli wklej tylko plik `.pub`.
 3. Połącz się przez `ssh -i ~/.ssh/cfo_oracle_ed25519 ubuntu@<publiczny-ip>`. Zachowaj tę sesję otwartą aż do przetestowania drugiej sesji SSH.
-4. Zaktualizuj system i zainstaluj minimum: `sudo apt update && sudo apt full-upgrade -y && sudo apt install -y ca-certificates curl git ufw fail2ban unattended-upgrades auditd`.
+4. Zaktualizuj system i zainstaluj minimum: `sudo apt update && sudo apt full-upgrade -y && sudo apt install -y ca-certificates curl git ufw fail2ban unattended-upgrades auditd iptables-persistent`.
 5. Utwórz zwykłego operatora wdrożeń i kopiuj do niego wyłącznie publiczny klucz SSH. Nie pracuj jako root.
 6. Utwórz `/etc/ssh/sshd_config.d/90-cfo-hardening.conf` z: `PermitRootLogin no`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PubkeyAuthentication yes`, `AllowUsers <operator>`, `MaxAuthTries 3`, `ClientAliveInterval 300`, `ClientAliveCountMax 2`. Sprawdź składnię `sudo sshd -t`, dopiero potem `sudo systemctl reload ssh` i zaloguj się w **drugim terminalu**. Dopiero po sukcesie zamknij pierwszą sesję. Oracle zaleca key-only, zakaz haseł i zakaz root login. [Wymagane opcje SSH](https://docs.oracle.com/en-us/iaas/Content/Security/Reference/compute_security.htm).
-7. W UFW ustaw najpierw SSH z dokładnego IP administratora, następnie 80/443, a na końcu `sudo ufw default deny incoming`, `sudo ufw default allow outgoing`, `sudo ufw enable`. Przetestuj: port 3000 z Internetu musi być zamknięty, `/api/health` pod domeną HTTPS — dostępne.
+7. **Nie włączaj UFW na obrazach Ubuntu od Oracle.** Obraz ma własne reguły iptables (m.in. dla iSCSI boot volume); UFW wchodzi z nimi w konflikt i może odciąć SSH albo uniemożliwić ponowny start VM. Domyślne reguły przepuszczają tylko SSH, więc dopisz 80/443 przed końcowym `REJECT` i zapisz je trwale:
+
+   ```bash
+   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+   sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 443 -j ACCEPT
+   sudo netfilter-persistent save
+   sudo iptables -L INPUT --line-numbers   # ACCEPT 80/443 musi być nad REJECT
+   ```
+
+   Nie wykonuj `iptables -F` i nie usuwaj istniejących reguł Oracle. Ograniczenie SSH do IP administratora realizuje NSG (sekcja 2). Przetestuj: port 3000 z Internetu musi być zamknięty, `/api/health` pod domeną HTTPS — dostępne.
 8. Włącz aktualizacje bezpieczeństwa (`sudo dpkg-reconfigure --priority=low unattended-upgrades`), `fail2ban`, `auditd` i regularnie sprawdzaj `sudo systemctl --failed` oraz wolne miejsce. Fail2ban jest warstwą pomocniczą; nie zastępuje key-only ani ograniczenia 22 w NSG.
+
+## Brak pojemności A1 („Out of capacity for shape VM.Standard.A1.Flex”)
+
+Błąd oznacza, że w home regionie chwilowo brak wolnych hostów ARM dla kont Free Tier. Nie jest to błąd konfiguracji i nie zniknie przez zmianę fault domain. Home regionu nie można zmienić, dlatego kolejność działań:
+
+1. **Automatyczne ponawianie** — `deploy/oci-launch-retry.sh` próbuje wszystkich AD co `RETRY_SECONDS` (domyślnie 60 s), aż instancja powstanie. Uruchom go w OCI Cloud Shell lub na własnym komputerze z `oci setup config` (np. w `tmux`/`nohup`). OCID subnetu i obrazu skopiuj z kreatora „Create instance” (subnet musi istnieć wcześniej). Pojemność zwalnia się zwykle w nocy/rano; skuteczność to zwykle godziny–dni, nie tygodnie.
+2. **Mniejszy kształt** — `OCPUS=1 MEMORY_GB=6` trafia łatwiej; aplikacja dwuosobowa działa na nim bez problemu. Później można spróbować edycji kształtu do 2/12 (też zależy od capacity).
+3. **Upgrade do Pay As You Go** — konta PAYG mają priorytet do pojemności A1, a zasoby oznaczone `Always Free Eligible` nadal są bezpłatne. Oracle może zrobić jednorazową autoryzację karty. Przed upgradem ustaw budżet z alarmem (np. 1 zł/1 USD), twórz tylko zasoby z etykietą Always Free i co miesiąc sprawdzaj Billing.
+4. **Tymczasowo `VM.Standard.E2.1.Micro`** (AMD, 1 GB RAM, Always Free, zwykle dostępny) — aplikacja działa, ale `docker build` Next.js nie zmieści się w 1 GB: dodaj 4 GB swapu (`fallocate -l 4G /swapfile`, `mkswap`, `swapon`, wpis w `/etc/fstab`) albo zbuduj obraz na innej maszynie i przenieś (`docker save | ssh ... docker load`). Po zwolnieniu A1 przenieś dane przez `backup:create` / `backup:restore`.
 
 ## 4. Instalacja Dockera i aplikacji
 
-1. Zainstaluj Docker Engine i Compose Plugin **wyłącznie z aktualnej instrukcji Docker dla Ubuntu ARM64**, następnie `sudo systemctl enable --now docker`. Zweryfikuj `docker version` i `docker compose version`. Node.js nie jest potrzebny na hoście: obraz aplikacji zawiera Node 24.
+1. Zainstaluj Docker Engine i Compose Plugin **wyłącznie z aktualnej instrukcji Docker dla Ubuntu ARM64**, następnie `sudo systemctl enable --now docker`. Zweryfikuj `docker version` i `docker compose version`. Node.js nie jest potrzebny na hoście: obraz aplikacji zawiera Node 24. Dodaj operatora do grupy `docker` (`sudo usermod -aG docker <operator>`, potem ponowne logowanie) — inaczej timer backupu z `User=<operator>` nie uruchomi `docker compose`.
 2. Utwórz katalogi z najmniejszymi uprawnieniami: `/srv/cfo/app`, `/srv/cfo/backups`, `/srv/cfo/secrets`; właściciel: operator, katalog `secrets` ma `700`, pliki sekretów `600`.
 3. Sklonuj lub przenieś tylko zweryfikowany kod do `/srv/cfo/app`; przejrzyj `git status`, tag/commit i `npm run` w CI przed wdrożeniem.
 4. Skopiuj `.env.example` do `/srv/cfo/app/.env`, ustaw losowe `SESSION_SECRET` i **inny** `BACKUP_ENCRYPTION_KEY`, `COOKIE_SECURE=1`, `TRUST_PROXY=1`, `FORCE_HSTS=1`, `AI_MODE=disabled`; nadaj plikowi `chmod 600`. Sekretów nie wpisuj w historię shell, URL, komunikaty ani Git.
 5. Skopiuj `deploy/Caddyfile.example` jako `deploy/Caddyfile`, podmień domenę, ustaw rekordy DNS A/AAAA i uruchom: `docker compose -f deploy/docker-compose.vps.yml up -d --build`.
-6. Sprawdź z zewnątrz: `curl -fsS https://twoja-domena/api/health`; sprawdź certyfikat, przekierowanie HTTP→HTTPS oraz że `http://ip:3000` nie odpowiada. Utwórz konta seed tylko raz, następnie ustaw 2FA dla każdego użytkownika.
+6. Sprawdź z zewnątrz: `curl -fsS https://twoja-domena/api/health`; sprawdź certyfikat, przekierowanie HTTP→HTTPS oraz że `http://ip:3000` nie odpowiada. Utwórz konta seed tylko raz (`docker compose -f deploy/docker-compose.vps.yml exec app npm run db:seed`), następnie ustaw 2FA dla każdego użytkownika.
 7. Po każdej aktualizacji: najpierw zweryfikowany backup, potem pobranie kodu, build/restart, health check, logi bez sekretów i krótki test logowania. Nigdy nie uruchamiaj poleceń z Internetu w ciemno jako root.
 
 ## 5. Backup 3-2-1 i Google Drive
@@ -122,7 +141,7 @@ Następnie: `sudo systemctl daemon-reload`, `sudo systemctl enable --now cfo-bac
 
 - **Codziennie automatycznie:** backup + upload; obserwuj nieudane timery.
 - **Co tydzień:** `apt` security updates, status kontenerów, wolne miejsce, logi `fail2ban`, liczba kluczy SSH.
-- **Co miesiąc:** restore próbny, przegląd NSG/UFW/IAM/MFA, aktualizacja obrazu aplikacji po testach, kontrola kosztów i limitów Always Free.
+- **Co miesiąc:** restore próbny, przegląd NSG/iptables/IAM/MFA, aktualizacja obrazu aplikacji po testach, kontrola kosztów i limitów Always Free.
 - **Po incydencie:** odetnij publiczny ruch w NSG (pozostaw tylko własny SSH/VPN), zachowaj logi, obróć `SESSION_SECRET`, hasła, klucz backupu i token Google Drive, odtwórz na nowej VM ze zweryfikowanej kopii. Nie „czyść” dowodów przed ustaleniem zakresu.
 
 ## Zakazy dla przyszłego modelu
