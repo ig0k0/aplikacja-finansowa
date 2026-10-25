@@ -60,10 +60,15 @@ docker compose -f deploy/docker-compose.vps.yml up -d --build
 To brak wolnych serwerow ARM w Twoim home regionie, nie blad konfiguracji. Opcje opisane sa w
 runbooku (sekcja „Brak pojemności A1”); najskuteczniejsze to automatyczne ponawianie:
 
+W OCI Cloud Shell (CLI jest juz zalogowane) wgraj plik `deploy/oci-launch-retry.sh`
+(menu kola zebatego -> Upload) i uruchom:
+
 ```bash
-COMPARTMENT_ID=ocid1... SUBNET_ID=ocid1... IMAGE_ID=ocid1... \
-SSH_KEY_FILE=~/.ssh/cfo_oracle_ed25519.pub ./deploy/oci-launch-retry.sh
+bash oci-launch-retry.sh
 ```
+
+Domyslne ustawienia (nazwa `APP`, VCN `Network2`, subnet `cfo-public-subnet`, 1 OCPU / 6 GB, Ubuntu 24.04)
+mozna zmienic zmiennymi, np. `OCPUS=2 MEMORY_GB=12 bash oci-launch-retry.sh`.
 
 ## Co daje aplikacja
 
