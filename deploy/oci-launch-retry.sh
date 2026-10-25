@@ -11,6 +11,9 @@
 # Kazda wartosc mozna nadpisac zmienna srodowiskowa, np.:
 #   OCPUS=2 MEMORY_GB=12 bash oci-launch-retry.sh
 #   IMAGE_OS="Oracle Linux" IMAGE_OS_VERSION=9 bash oci-launch-retry.sh
+#
+# Automatycznie, bez otwartego Cloud Shell: .github/workflows/oci-launch-retry.yml uruchamia
+# skrypt co 5 minut z MAX_RUNTIME_SECONDS, wiec proby ida praktycznie bez przerwy.
 set -uo pipefail
 
 COMPARTMENT_ID="${COMPARTMENT_ID:-${OCI_TENANCY:-}}"
@@ -27,8 +30,11 @@ IMAGE_OS_VERSION="${IMAGE_OS_VERSION:-24.04}"
 SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY:-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH5vwUMwNmc0TMRMoGYU5rYO5yZnxaaZqDmxB/Qvhnpe oracle-oci}"
 # Odstep miedzy kolejnymi probami (kolejna AD). 3 AD x 20 s = kazda AD co ~60 s.
 DELAY_SECONDS="${DELAY_SECONDS:-20}"
+# 0 = bez limitu. W GitHub Actions skrypt konczy sie po tym czasie i startuje ponownie z harmonogramu.
+MAX_RUNTIME_SECONDS="${MAX_RUNTIME_SECONDS:-0}"
 
 log() { echo "[$(date '+%F %T')] $*"; }
+summary() { [ -n "${GITHUB_STEP_SUMMARY:-}" ] && echo "$*" >> "$GITHUB_STEP_SUMMARY"; return 0; }
 die() { echo "BLAD: $*" >&2; exit 1; }
 
 command -v oci >/dev/null || die "Brak OCI CLI - uruchom skrypt w OCI Cloud Shell."
@@ -74,8 +80,13 @@ fi
 
 # --- petla ------------------------------------------------------------------------------------
 attempt=0
+started=$SECONDS
 while true; do
   for ad in "${ADS[@]}"; do
+    if [ "$MAX_RUNTIME_SECONDS" -gt 0 ] && [ $((SECONDS - started)) -ge "$MAX_RUNTIME_SECONDS" ]; then
+      log "Limit czasu ${MAX_RUNTIME_SECONDS}s, $attempt prob bez pojemnosci - kolejne uruchomienie z harmonogramu."
+      exit 0
+    fi
     attempt=$((attempt + 1))
 
     # --no-retry: bez tego CLI samo ponawia blad 500 przez kilka minut, zamiast przejsc do kolejnej AD.
@@ -106,6 +117,8 @@ while true; do
       [ "$IMAGE_OS" = "Oracle Linux" ] && user=opc
       log "Publiczny IP: ${ip:-sprawdz w konsoli}"
       log "Logowanie:    ssh -i <twoj_klucz_prywatny> ${user}@${ip:-<IP>}"
+      summary "## Instancja $DISPLAY_NAME utworzona w $ad"
+      summary "IP: \`${ip:-sprawdz w konsoli}\` — \`ssh ${user}@${ip:-<IP>}\`"
       exit 0
     fi
 
