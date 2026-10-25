@@ -69,12 +69,20 @@ log "Obraz:   $IMAGE_NAME"
 log "Ksztalt: $SHAPE ${OCPUS} OCPU / ${MEMORY_GB} GB, boot ${BOOT_GB} GB"
 
 # --- ochrona przed duplikatem ----------------------------------------------------------------
+# Liczba nieusunietych instancji o tej nazwie; "ERR" przy bledzie API.
+# Uwaga: przy pustej liscie OCI CLI nie wypisuje nic (zamiast {"data": []}).
 existing_count() {
-  oci compute instance list --compartment-id "$COMPARTMENT_ID" --display-name "$DISPLAY_NAME" --all \
-    | jq '[.data[]? | select(."lifecycle-state" != "TERMINATED" and ."lifecycle-state" != "TERMINATING")] | length'
+  local out
+  out=$(oci compute instance list --compartment-id "$COMPARTMENT_ID" --display-name "$DISPLAY_NAME" --all 2>&1) \
+    || { echo ERR; return; }
+  [ -z "$out" ] && { echo 0; return; }
+  jq '[.data[]? | select(."lifecycle-state" != "TERMINATED" and ."lifecycle-state" != "TERMINATING")] | length' \
+    <<<"$out" 2>/dev/null || echo ERR
 }
-if [ "$(existing_count)" != "0" ]; then
-  log "Instancja '$DISPLAY_NAME' juz istnieje - koniec."
+count=$(existing_count)
+[ "$count" = "ERR" ] && die "Nie udalo sie sprawdzic istniejacych instancji (oci compute instance list)."
+if [ "$count" -gt 0 ]; then
+  log "Instancja '$DISPLAY_NAME' juz istnieje ($count) - koniec."
   exit 0
 fi
 
@@ -138,7 +146,7 @@ while true; do
       # Bledy przejsciowe (500 inne niz capacity, timeout sieci) - probujemy dalej.
       log "#$attempt $ad: inny blad, ponawiam ${short:+($short)}"
       # Na wszelki wypadek: zapytanie moglo sie powiesc mimo bledu po stronie klienta.
-      if [ "$(existing_count)" != "0" ]; then
+      c=$(existing_count); if [ "$c" != "ERR" ] && [ "$c" -gt 0 ]; then
         log "Instancja '$DISPLAY_NAME' jednak powstala - sprawdz konsole."
         exit 0
       fi
