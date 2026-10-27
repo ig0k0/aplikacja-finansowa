@@ -1,0 +1,57 @@
+# Automatyczne ponawianie tworzenia instancji Oracle A1 (Always Free), az pojawi sie pojemnosc.
+# Harmonogram GitHub to minimum co 5 minut, dlatego kazde uruchomienie probuje przez ~4,5 min
+# (AD-1/2/3 na zmiane co 20 s), a kolejne startuje zaraz po nim. Po utworzeniu instancji
+# nastepne uruchomienia koncza sie od razu — wtedy wylacz workflow (Actions -> Disable workflow).
+#
+# Wymagane sekrety repo (Settings -> Secrets and variables -> Actions):
+#   OCI_TENANCY_OCID, OCI_USER_OCID, OCI_FINGERPRINT, OCI_REGION, OCI_PRIVATE_KEY
+name: OCI A1 launch retry
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: oci-launch-retry
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OCI CLI
+        run: pip install --quiet oci-cli
+
+      - name: Configure OCI CLI
+        env:
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.oci
+          printf '%s\n' "$OCI_PRIVATE_KEY" > ~/.oci/key.pem
+          cat > ~/.oci/config <<CONFIG
+          [DEFAULT]
+          user=$OCI_USER_OCID
+          fingerprint=$OCI_FINGERPRINT
+          tenancy=$OCI_TENANCY_OCID
+          region=$OCI_REGION
+          key_file=$HOME/.oci/key.pem
+          CONFIG
+          chmod 600 ~/.oci/config ~/.oci/key.pem
+
+      - name: Try to launch instance
+        env:
+          COMPARTMENT_ID: ${{ secrets.OCI_TENANCY_OCID }}
+          MAX_RUNTIME_SECONDS: "270"
+          OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: "True"
+        run: bash deploy/oci-launch-retry.sh
