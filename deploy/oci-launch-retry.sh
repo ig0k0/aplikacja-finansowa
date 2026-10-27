@@ -55,7 +55,7 @@ SUBNET_ID="${SUBNET_ID:-$(oci network subnet list --compartment-id "$COMPARTMENT
 
 IMAGE_ID="${IMAGE_ID:-$(oci compute image list --compartment-id "$COMPARTMENT_ID" \
   --operating-system "$IMAGE_OS" --operating-system-version "$IMAGE_OS_VERSION" --shape "$SHAPE" \
-  --sort-by TIMECREATED --sort-order DESC --limit 1 | jq -r '.data[0].id // empty')}"
+  --sort-by TIMECREATED --sort-order DESC --limit 1 2>/dev/null | jq -r '.data[0].id // empty')}"
 [ -n "$IMAGE_ID" ] || die "Nie znaleziono obrazu '$IMAGE_OS $IMAGE_OS_VERSION' dla $SHAPE."
 IMAGE_NAME=$(oci compute image get --image-id "$IMAGE_ID" | jq -r '.data."display-name"')
 
