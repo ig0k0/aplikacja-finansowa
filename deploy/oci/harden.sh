@@ -121,18 +121,24 @@ systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || systemc
 # ================================================================ fail2ban
 if command -v fail2ban-server >/dev/null; then
   log "fail2ban dla SSH"
-  cat >/etc/fail2ban/jail.d/cfo-sshd.local <<'EOF'
+  # Adres, z ktorego administrator jest teraz zalogowany, nigdy nie zostanie zablokowany.
+  ADMIN_IP="${SSH_CLIENT%% *}"
+  [[ -n "$ADMIN_IP" ]] || ADMIN_IP="$(who -m 2>/dev/null | sed -n 's/.*(\([0-9a-fA-F:.]*\)).*/\1/p')"
+  [[ "$ADMIN_IP" =~ ^[0-9a-fA-F:.]+$ ]] || ADMIN_IP=""
+  [[ -n "$ADMIN_IP" ]] && echo "     Biala lista fail2ban: $ADMIN_IP"
+  cat >/etc/fail2ban/jail.d/cfo-sshd.local <<EOF
 [DEFAULT]
+ignoreip = 127.0.0.1/8 ::1 ${ADMIN_IP}
 bantime = 1h
 bantime.increment = true
 bantime.maxtime = 1w
 findtime = 10m
-maxretry = 4
+maxretry = 5
 backend = systemd
 
 [sshd]
 enabled = true
-mode = aggressive
+mode = normal
 EOF
   systemctl enable fail2ban >/dev/null
   systemctl restart fail2ban
