@@ -1,6 +1,6 @@
 # Oracle Cloud: utwardzenie i wdrożenie w 3 krokach
 
-Ubuntu 22.04/24.04 (ARM A1 albo AMD Micro), zalogowany przez SSH jako `ubuntu`.
+Oracle Linux 8/9 (użytkownik `opc`) albo Ubuntu 22.04/24.04 (`ubuntu`), ARM A1 lub AMD Micro. Poniżej `ubuntu` = Twój użytkownik SSH (na Oracle Linux: `opc`).
 Pełne uzasadnienie decyzji: `docs/14_ORACLE_CLOUD_SECURITY_RUNBOOK.md`.
 
 | Skrypt | Uruchamiasz | Co robi |

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Utwardzenie VM Oracle Cloud (Ubuntu 22.04/24.04, ARM64 lub x86) + instalacja Dockera.
-# Uruchom na VM jako zwykly uzytkownik z sudo (np. `ubuntu`):
+# Utwardzenie VM Oracle Cloud + instalacja Dockera.
+# Obslugiwane: Oracle Linux 8/9 (uzytkownik `opc`) oraz Ubuntu 22.04/24.04 (`ubuntu`),
+# ARM64 (A1) lub x86. Uruchom jako zwykly uzytkownik z sudo:
 #   sudo bash deploy/oci/harden.sh
 #
 # Skrypt jest idempotentny — mozna go uruchamiac wielokrotnie.
@@ -18,43 +19,78 @@ OPERATOR="${OPERATOR:-${SUDO_USER:-}}"
 id "$OPERATOR" >/dev/null 2>&1 || die "Uzytkownik $OPERATOR nie istnieje."
 
 . /etc/os-release
-[[ "${ID:-}" == "ubuntu" ]] || die "Skrypt obsluguje Ubuntu (wykryto: ${PRETTY_NAME:-?}). Zobacz docs/14_ORACLE_CLOUD_SECURITY_RUNBOOK.md."
+case "${ID:-}" in
+  ubuntu) OS=ubuntu ;;
+  ol|rhel|almalinux|rocky|centos) OS=rhel ;;
+  *) die "Nieobslugiwany system: ${PRETTY_NAME:-?}. Obslugiwane: Oracle Linux 8/9, Ubuntu 22.04/24.04." ;;
+esac
+OS_MAJOR="${VERSION_ID%%.*}"
 
 OPERATOR_HOME="$(getent passwd "$OPERATOR" | cut -d: -f6)"
 if [[ ! -s "$OPERATOR_HOME/.ssh/authorized_keys" ]]; then
   die "$OPERATOR nie ma $OPERATOR_HOME/.ssh/authorized_keys — wylaczenie hasel odcieloby dostep. Przerwano."
 fi
+if [[ "$(id -u "$OPERATOR")" != "1000" ]]; then
+  warn "$OPERATOR ma uid $(id -u "$OPERATOR"), a proces w kontenerze uid 1000 — katalog backupu dostanie wlasciciela 1000."
+fi
 
-export DEBIAN_FRONTEND=noninteractive
+# ================================================================ pakiety + auto-aktualizacje
+if [[ $OS == ubuntu ]]; then
+  export DEBIAN_FRONTEND=noninteractive
+  log "Aktualizacja systemu i instalacja pakietow bezpieczenstwa (apt)"
+  apt-get update -y
+  apt-get -o Dpkg::Options::=--force-confold full-upgrade -y
+  apt-get install -y --no-install-recommends \
+    ca-certificates curl gnupg git openssl jq \
+    fail2ban unattended-upgrades apt-listchanges needrestart \
+    auditd iptables-persistent netfilter-persistent
 
-# ---------------------------------------------------------------- pakiety
-log "Aktualizacja systemu i instalacja pakietow bezpieczenstwa"
-apt-get update -y
-apt-get -o Dpkg::Options::=--force-confold full-upgrade -y
-apt-get install -y --no-install-recommends \
-  ca-certificates curl gnupg git openssl jq \
-  fail2ban unattended-upgrades apt-listchanges needrestart \
-  auditd iptables-persistent netfilter-persistent
-
-# ---------------------------------------------------------------- auto-aktualizacje
-log "Automatyczne aktualizacje bezpieczenstwa"
-cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
+  log "Automatyczne aktualizacje bezpieczenstwa"
+  cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Download-Upgradeable-Packages "1";
 APT::Periodic::Unattended-Upgrade "1";
 APT::Periodic::AutocleanInterval "7";
 EOF
-cat >/etc/apt/apt.conf.d/52cfo-unattended <<'EOF'
+  cat >/etc/apt/apt.conf.d/52cfo-unattended <<'EOF'
 // Restart w nocy tylko gdy aktualizacja jadra tego wymaga.
 Unattended-Upgrade::Automatic-Reboot "true";
 Unattended-Upgrade::Automatic-Reboot-Time "04:30";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
 EOF
-systemctl enable --now unattended-upgrades
+  systemctl enable --now unattended-upgrades
+else
+  log "Aktualizacja systemu i instalacja pakietow bezpieczenstwa (dnf)"
+  dnf -y upgrade --refresh
+  dnf -y install curl git openssl jq tar audit policycoreutils-python-utils firewalld dnf-automatic dnf-plugins-core
 
-# ---------------------------------------------------------------- SSH
+  log "Repozytorium EPEL (dla fail2ban)"
+  FAIL2BAN_OK=1
+  if [[ "${ID}" == "ol" ]]; then
+    dnf -y install "oracle-epel-release-el${OS_MAJOR}" \
+      && dnf config-manager --enable "ol${OS_MAJOR}_developer_EPEL" \
+      || FAIL2BAN_OK=0
+  else
+    dnf -y install epel-release || FAIL2BAN_OK=0
+  fi
+  if [[ $FAIL2BAN_OK == 1 ]]; then
+    dnf -y install fail2ban-server fail2ban-firewalld fail2ban-systemd || FAIL2BAN_OK=0
+  fi
+  [[ $FAIL2BAN_OK == 1 ]] || warn "Nie udalo sie zainstalowac fail2ban (EPEL). Kontynuuje — SSH i tak przyjmuje tylko klucze."
+
+  log "Automatyczne aktualizacje bezpieczenstwa (dnf-automatic)"
+  conf=/etc/dnf/automatic.conf
+  sed -i 's/^upgrade_type *=.*/upgrade_type = security/' "$conf"
+  sed -i 's/^apply_updates *=.*/apply_updates = yes/' "$conf"
+  if grep -q '^#\?reboot *=' "$conf"; then
+    sed -i 's/^#\?reboot *=.*/reboot = when-needed/' "$conf"
+  fi
+  systemctl enable --now dnf-automatic.timer
+fi
+
+# ================================================================ SSH
 log "Utwardzenie SSH (tylko klucze, bez roota, tylko $OPERATOR)"
-# Nazwa 00-* — sshd bierze PIERWSZA wartosc, a obrazy chmurowe maja 50-/60-cloudimg-*.
+# Nazwa 00-* — sshd bierze PIERWSZA wartosc, a obrazy chmurowe maja 50-/60-* z wlasnymi ustawieniami.
 cat >/etc/ssh/sshd_config.d/00-cfo-hardening.conf <<EOF
 PermitRootLogin no
 PasswordAuthentication no
@@ -73,13 +109,19 @@ AllowAgentForwarding no
 AllowTcpForwarding local
 PermitTunnel no
 EOF
-chmod 644 /etc/ssh/sshd_config.d/00-cfo-hardening.conf
+chmod 600 /etc/ssh/sshd_config.d/00-cfo-hardening.conf
+[[ -x /usr/sbin/restorecon ]] && restorecon /etc/ssh/sshd_config.d/00-cfo-hardening.conf || true
+if ! grep -qE '^\s*Include\s+/etc/ssh/sshd_config.d/' /etc/ssh/sshd_config; then
+  warn "sshd_config nie wczytuje sshd_config.d — dopisuje Include na poczatku."
+  sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config
+fi
 sshd -t || { rm -f /etc/ssh/sshd_config.d/00-cfo-hardening.conf; die "Bledna konfiguracja sshd — wycofano."; }
-systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || systemctl restart ssh
+systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || systemctl restart sshd
 
-# ---------------------------------------------------------------- fail2ban
-log "fail2ban dla SSH"
-cat >/etc/fail2ban/jail.d/cfo-sshd.local <<'EOF'
+# ================================================================ fail2ban
+if command -v fail2ban-server >/dev/null; then
+  log "fail2ban dla SSH"
+  cat >/etc/fail2ban/jail.d/cfo-sshd.local <<'EOF'
 [DEFAULT]
 bantime = 1h
 bantime.increment = true
@@ -92,28 +134,43 @@ backend = systemd
 enabled = true
 mode = aggressive
 EOF
-systemctl enable fail2ban
-systemctl restart fail2ban
+  systemctl enable fail2ban >/dev/null
+  systemctl restart fail2ban
+fi
 
-# ---------------------------------------------------------------- firewall hosta
-# Obrazy Ubuntu w OCI maja wlasne reguly iptables (/etc/iptables/rules.v4):
-# wpuszczaja tylko SSH i odrzucaja reszte. Oracle odradza UFW na tych obrazach,
-# wiec dopisujemy 80/443 do istniejacych regul zamiast je zastepowac.
-log "Firewall hosta: otwarcie 80/443 (reszta pozostaje zamknieta)"
-RULES=/etc/iptables/rules.v4
-if [[ -f "$RULES" ]] && grep -q -- '-A INPUT -j REJECT' "$RULES"; then
-  for port in 80 443; do
-    rule="-A INPUT -p tcp -m state --state NEW -m tcp --dport $port -j ACCEPT"
-    if ! grep -qF -- "$rule" "$RULES"; then
-      sed -i "0,/^-A INPUT -j REJECT/s//${rule//\//\\/}\n-A INPUT -j REJECT/" "$RULES"
-    fi
+# ================================================================ firewall hosta
+if [[ $OS == rhel ]]; then
+  log "Firewall hosta (firewalld): otwarte tylko ssh, http, https"
+  systemctl enable --now firewalld
+  firewall-cmd --permanent --add-service=ssh >/dev/null
+  firewall-cmd --permanent --add-service=http >/dev/null
+  firewall-cmd --permanent --add-service=https >/dev/null
+  firewall-cmd --permanent --add-port=443/udp >/dev/null
+  # Usun uslugi otwarte domyslnie, ktorych aplikacja nie potrzebuje.
+  for svc in cockpit dhcpv6-client; do
+    firewall-cmd --permanent --remove-service="$svc" >/dev/null 2>&1 || true
   done
-  udp_rule="-A INPUT -p udp -m udp --dport 443 -j ACCEPT"
-  grep -qF -- "$udp_rule" "$RULES" || sed -i "0,/^-A INPUT -j REJECT/s//${udp_rule}\n-A INPUT -j REJECT/" "$RULES"
+  firewall-cmd --reload >/dev/null
+  firewall-cmd --list-services
 else
-  warn "Brak standardowych regul OCI w $RULES — dodaje minimalny zestaw."
-  mkdir -p /etc/iptables
-  cat >"$RULES" <<'EOF'
+  # Obrazy Ubuntu w OCI maja wlasne reguly iptables (/etc/iptables/rules.v4):
+  # wpuszczaja tylko SSH i odrzucaja reszte. Oracle odradza UFW na tych obrazach,
+  # wiec dopisujemy 80/443 do istniejacych regul zamiast je zastepowac.
+  log "Firewall hosta (iptables): otwarcie 80/443 (reszta pozostaje zamknieta)"
+  RULES=/etc/iptables/rules.v4
+  if [[ -f "$RULES" ]] && grep -q -- '-A INPUT -j REJECT' "$RULES"; then
+    for port in 80 443; do
+      rule="-A INPUT -p tcp -m state --state NEW -m tcp --dport $port -j ACCEPT"
+      if ! grep -qF -- "$rule" "$RULES"; then
+        sed -i "0,/^-A INPUT -j REJECT/s//${rule}\n-A INPUT -j REJECT/" "$RULES"
+      fi
+    done
+    udp_rule="-A INPUT -p udp -m udp --dport 443 -j ACCEPT"
+    grep -qF -- "$udp_rule" "$RULES" || sed -i "0,/^-A INPUT -j REJECT/s//${udp_rule}\n-A INPUT -j REJECT/" "$RULES"
+  else
+    warn "Brak standardowych regul OCI w $RULES — dodaje minimalny zestaw."
+    mkdir -p /etc/iptables
+    cat >"$RULES" <<'EOF'
 *filter
 :INPUT ACCEPT [0:0]
 :FORWARD ACCEPT [0:0]
@@ -129,20 +186,21 @@ else
 -A INPUT -j REJECT --reject-with icmp-host-prohibited
 COMMIT
 EOF
-fi
-# Zastosuj na zywo bez flush (nie kasuje regul Dockera).
-for port in 80 443; do
-  iptables -C INPUT -p tcp -m state --state NEW -m tcp --dport "$port" -j ACCEPT 2>/dev/null \
-    || iptables -I INPUT 1 -p tcp -m state --state NEW -m tcp --dport "$port" -j ACCEPT
-done
-iptables -C INPUT -p udp -m udp --dport 443 -j ACCEPT 2>/dev/null \
-  || iptables -I INPUT 1 -p udp -m udp --dport 443 -j ACCEPT
-systemctl enable netfilter-persistent >/dev/null 2>&1 || true
-if command -v ufw >/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
-  warn "UFW jest aktywny — na obrazach OCI koliduje z regulami iptables. Rozwaz: sudo ufw disable"
+  fi
+  # Zastosuj na zywo bez flush (nie kasuje regul Dockera).
+  for port in 80 443; do
+    iptables -C INPUT -p tcp -m state --state NEW -m tcp --dport "$port" -j ACCEPT 2>/dev/null \
+      || iptables -I INPUT 1 -p tcp -m state --state NEW -m tcp --dport "$port" -j ACCEPT
+  done
+  iptables -C INPUT -p udp -m udp --dport 443 -j ACCEPT 2>/dev/null \
+    || iptables -I INPUT 1 -p udp -m udp --dport 443 -j ACCEPT
+  systemctl enable netfilter-persistent >/dev/null 2>&1 || true
+  if command -v ufw >/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
+    warn "UFW jest aktywny — na obrazach OCI koliduje z regulami iptables. Rozwaz: sudo ufw disable"
+  fi
 fi
 
-# ---------------------------------------------------------------- sysctl
+# ================================================================ sysctl
 log "Parametry jadra (sysctl)"
 cat >/etc/sysctl.d/90-cfo-hardening.conf <<'EOF'
 net.ipv4.tcp_syncookies = 1
@@ -165,26 +223,33 @@ fs.protected_hardlinks = 1
 fs.protected_symlinks = 1
 fs.suid_dumpable = 0
 EOF
-sysctl --system >/dev/null
+sysctl --system >/dev/null 2>&1 || warn "Niektore parametry sysctl nie sa obslugiwane przez to jadro — pominiete."
 
-# ---------------------------------------------------------------- swap (male VM)
+# ================================================================ swap (male VM)
 MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
 if (( MEM_MB < 3000 )) && ! swapon --show | grep -q .; then
   log "Mala ilosc RAM (${MEM_MB} MB) — tworze 2 GB swap (potrzebny do builda Next.js)"
-  fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile
+  dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
+  chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile
   grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >>/etc/fstab
 fi
 
-# ---------------------------------------------------------------- Docker
-if ! command -v docker >/dev/null; then
+# ================================================================ Docker
+if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; then
   log "Instalacja Docker Engine z oficjalnego repozytorium Dockera"
-  install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-  chmod a+r /etc/apt/keyrings/docker.asc
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
-    >/etc/apt/sources.list.d/docker.list
-  apt-get update -y
-  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  if [[ $OS == ubuntu ]]; then
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    chmod a+r /etc/apt/keyrings/docker.asc
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
+      >/etc/apt/sources.list.d/docker.list
+    apt-get update -y
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  else
+    # Podman/runc z systemu koliduja z containerd.io — --allowerasing je zastepuje.
+    dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    dnf -y install --allowerasing docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  fi
 fi
 
 log "Konfiguracja demona Dockera (rotacja logow, no-new-privileges)"
@@ -203,7 +268,7 @@ systemctl restart docker
 # Grupa docker = de facto root. Dodajemy tylko operatora wdrozen.
 usermod -aG docker "$OPERATOR"
 
-# ---------------------------------------------------------------- katalogi
+# ================================================================ katalogi
 log "Katalogi /srv/cfo (app, backups, secrets)"
 install -d -m 755 -o "$OPERATOR" -g "$OPERATOR" /srv/cfo
 install -d -m 755 -o "$OPERATOR" -g "$OPERATOR" /srv/cfo/app
@@ -211,7 +276,7 @@ install -d -m 700 -o "$OPERATOR" -g "$OPERATOR" /srv/cfo/secrets
 # Backupy zapisuje proces w kontenerze (uid 1000 = `node`).
 install -d -m 700 -o 1000 -g 1000 /srv/cfo/backups
 
-# ---------------------------------------------------------------- audyt
+# ================================================================ audyt
 systemctl enable --now auditd >/dev/null 2>&1 || true
 
 log "Gotowe."
@@ -220,10 +285,8 @@ cat <<EOF
 Nastepne kroki:
   1. NIE zamykaj tej sesji. W DRUGIM terminalu sprawdz: ssh $OPERATOR@<IP>
   2. Wyloguj sie i zaloguj ponownie (grupa docker), potem:
-       bash deploy/oci/deploy.sh
-  3. W konsoli OCI (VCN -> Security List / NSG) otworz TCP 80 i 443 z 0.0.0.0/0,
-     a TCP 22 ogranicz do swojego IP (/32).
+       cd /srv/cfo/app && bash deploy/oci/deploy.sh
 EOF
-if [[ -f /var/run/reboot-required ]]; then
+if [[ -f /var/run/reboot-required ]] || { command -v needs-restarting >/dev/null && ! needs-restarting -r >/dev/null 2>&1; }; then
   warn "Wymagany restart po aktualizacji jadra: sudo reboot (po sprawdzeniu SSH)."
 fi
