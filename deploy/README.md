@@ -1,30 +1,25 @@
 # Wdrozenie na VPS (HTTPS)
 
-## Wymagania
+**Oracle Cloud / Ubuntu:** uzyj gotowych skryptow, opisanych w [`oci/README.md`](oci/README.md). Robia utwardzenie systemu, wdrozenie, HTTPS i backup.
 
-- Domena wskazujaca na VPS (rekord A).
-- Plik `.env` w katalogu glownym projektu (jak w `.env.example`).
+## Recznie (dowolny VPS z Dockerem)
 
-## Kroki
-
-1. Skopiuj `Caddyfile.example` do `Caddyfile` i ustaw swoja domene.
-2. Ustaw w `.env` m.in.:
-   - `SESSION_SECRET` — losowy, dlugi sekret
-   - `COOKIE_SECURE=1`
-   - `TRUST_PROXY=1`
-3. Uruchom:
+1. Domena wskazuje na VPS (rekord A).
+2. W `.env` w katalogu glownym repo ustaw:
+   - `SESSION_SECRET` i `BACKUP_ENCRYPTION_KEY`: rozne, losowe (`openssl rand -hex 32`),
+   - `CFO_DOMAIN=twoja.domena.pl` (czyta go `deploy/Caddyfile`),
+   - opcjonalnie `CFO_BACKUP_DIR=/sciezka/na/backupy` (katalog wlasnosci uid 1000).
+3. Uruchom z katalogu glownego repo (jawny `--env-file` jest wymagany):
 
 ```bash
-docker compose -f deploy/docker-compose.vps.yml up -d --build
-docker compose -f deploy/docker-compose.vps.yml exec app npm run db:migrate
+docker compose --env-file .env -f deploy/docker-compose.vps.yml up -d --build
 ```
 
 4. Sprawdz health: `curl -sS https://twoja-domena/api/health`
 
-## Co daje aplikacja
+## Co daje konfiguracja
 
-- Naglowki bezpieczenstwa (`src/middleware.ts`)
+- Naglowki bezpieczenstwa (`src/middleware.ts` + `deploy/Caddyfile`)
 - Limit prob logowania (`LOGIN_RATE_LIMIT_MAX`, domyslnie 8 / 15 min)
-- Sesja `Secure` przy `COOKIE_SECURE=1`
-
-Caddy dodaje HTTPS i przekazuje `X-Forwarded-Proto` do aplikacji.
+- Sesja `Secure` przy `COOKIE_SECURE=1`, HSTS
+- Aplikacja w kontenerze jako uzytkownik `node` (bez roota), `cap_drop: ALL`, `no-new-privileges`, limity pamieci, port 3000 niepubliczny

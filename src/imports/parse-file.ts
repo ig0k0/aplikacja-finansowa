@@ -286,7 +286,8 @@ function neutralExtractedTextToMatrix(text: string): unknown[][] {
 
 async function parseReceiptImage(buffer: Buffer): Promise<ParsedImportFile> {
   const { createWorker } = await import("tesseract.js");
-  const worker = await createWorker("pol");
+  const cachePath = process.env.TESSERACT_CACHE_DIR?.trim();
+  const worker = await createWorker("pol", undefined, cachePath ? { cachePath } : {});
 
   try {
     const {

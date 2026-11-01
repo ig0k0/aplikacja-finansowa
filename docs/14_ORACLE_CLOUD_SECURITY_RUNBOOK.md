@@ -1,6 +1,6 @@
 # 14. Oracle Cloud Always Free — wdrożenie i bezpieczeństwo
 
-Data weryfikacji: 2026-09-06. Ten dokument jest instrukcją operacyjną również dla przyszłego modelu. Nie zastępuje okresowego sprawdzenia aktualnej konsoli i [limitów Oracle](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm).
+Data weryfikacji: 2026-09-06. Ten dokument jest instrukcją operacyjną również dla przyszłego modelu. **Kroki 3–5 są zautomatyzowane** skryptami w `deploy/oci/` (`harden.sh`, `deploy.sh`, `install-backup-timer.sh`) — patrz `deploy/oci/README.md`. Nie zastępuje okresowego sprawdzenia aktualnej konsoli i [limitów Oracle](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm).
 
 ## Decyzja docelowa
 
@@ -43,10 +43,10 @@ Nie otwieraj ICMP, baz danych, Dockera, portu administracyjnego ani SSH dla `0.0
 1. Wybierz Ubuntu Server 24.04 LTS ARM64, `VM.Standard.A1.Flex`, 2 OCPU, 12 GB, 50 GB boot volume, publiczny IPv4 tylko jeśli aplikacja ma być dostępna bez VPN.
 2. Wygeneruj na **lokalnym komputerze administratora** nowy klucz ed25519 z silną frazą: `ssh-keygen -t ed25519 -a 64 -f ~/.ssh/cfo_oracle_ed25519 -C "cfo-oracle"`. W konsoli wklej tylko plik `.pub`.
 3. Połącz się przez `ssh -i ~/.ssh/cfo_oracle_ed25519 ubuntu@<publiczny-ip>`. Zachowaj tę sesję otwartą aż do przetestowania drugiej sesji SSH.
-4. Zaktualizuj system i zainstaluj minimum: `sudo apt update && sudo apt full-upgrade -y && sudo apt install -y ca-certificates curl git ufw fail2ban unattended-upgrades auditd`.
+4. Zaktualizuj system i zainstaluj minimum: `sudo apt update && sudo apt full-upgrade -y && sudo apt install -y ca-certificates curl git fail2ban unattended-upgrades auditd iptables-persistent`. Nie instaluj UFW: obrazy Ubuntu w OCI mają własne reguły iptables (`/etc/iptables/rules.v4`), z którymi UFW koliduje.
 5. Utwórz zwykłego operatora wdrożeń i kopiuj do niego wyłącznie publiczny klucz SSH. Nie pracuj jako root.
-6. Utwórz `/etc/ssh/sshd_config.d/90-cfo-hardening.conf` z: `PermitRootLogin no`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PubkeyAuthentication yes`, `AllowUsers <operator>`, `MaxAuthTries 3`, `ClientAliveInterval 300`, `ClientAliveCountMax 2`. Sprawdź składnię `sudo sshd -t`, dopiero potem `sudo systemctl reload ssh` i zaloguj się w **drugim terminalu**. Dopiero po sukcesie zamknij pierwszą sesję. Oracle zaleca key-only, zakaz haseł i zakaz root login. [Wymagane opcje SSH](https://docs.oracle.com/en-us/iaas/Content/Security/Reference/compute_security.htm).
-7. W UFW ustaw najpierw SSH z dokładnego IP administratora, następnie 80/443, a na końcu `sudo ufw default deny incoming`, `sudo ufw default allow outgoing`, `sudo ufw enable`. Przetestuj: port 3000 z Internetu musi być zamknięty, `/api/health` pod domeną HTTPS — dostępne.
+6. Utwórz `/etc/ssh/sshd_config.d/00-cfo-hardening.conf` (prefiks `00`, bo sshd stosuje pierwszą napotkaną wartość, a obraz chmurowy ma własny `60-cloudimg-settings.conf`) z: `PermitRootLogin no`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PubkeyAuthentication yes`, `AllowUsers <operator>`, `MaxAuthTries 3`, `ClientAliveInterval 300`, `ClientAliveCountMax 2`. Sprawdź składnię `sudo sshd -t`, dopiero potem `sudo systemctl reload ssh` i zaloguj się w **drugim terminalu**. Dopiero po sukcesie zamknij pierwszą sesję. Oracle zaleca key-only, zakaz haseł i zakaz root login. [Wymagane opcje SSH](https://docs.oracle.com/en-us/iaas/Content/Security/Reference/compute_security.htm).
+7. W `/etc/iptables/rules.v4` dopisz `ACCEPT` dla TCP 80/443 (i UDP 443) **przed** końcową regułą `REJECT` w łańcuchu `INPUT`; nie usuwaj reguł Oracle. Ograniczenie SSH do IP administratora ustaw w NSG/Security List. Przetestuj: port 3000 z Internetu musi być zamknięty, `/api/health` pod domeną HTTPS — dostępne.
 8. Włącz aktualizacje bezpieczeństwa (`sudo dpkg-reconfigure --priority=low unattended-upgrades`), `fail2ban`, `auditd` i regularnie sprawdzaj `sudo systemctl --failed` oraz wolne miejsce. Fail2ban jest warstwą pomocniczą; nie zastępuje key-only ani ograniczenia 22 w NSG.
 
 ## 4. Instalacja Dockera i aplikacji
@@ -55,7 +55,7 @@ Nie otwieraj ICMP, baz danych, Dockera, portu administracyjnego ani SSH dla `0.0
 2. Utwórz katalogi z najmniejszymi uprawnieniami: `/srv/cfo/app`, `/srv/cfo/backups`, `/srv/cfo/secrets`; właściciel: operator, katalog `secrets` ma `700`, pliki sekretów `600`.
 3. Sklonuj lub przenieś tylko zweryfikowany kod do `/srv/cfo/app`; przejrzyj `git status`, tag/commit i `npm run` w CI przed wdrożeniem.
 4. Skopiuj `.env.example` do `/srv/cfo/app/.env`, ustaw losowe `SESSION_SECRET` i **inny** `BACKUP_ENCRYPTION_KEY`, `COOKIE_SECURE=1`, `TRUST_PROXY=1`, `FORCE_HSTS=1`, `AI_MODE=disabled`; nadaj plikowi `chmod 600`. Sekretów nie wpisuj w historię shell, URL, komunikaty ani Git.
-5. Skopiuj `deploy/Caddyfile.example` jako `deploy/Caddyfile`, podmień domenę, ustaw rekordy DNS A/AAAA i uruchom: `docker compose -f deploy/docker-compose.vps.yml up -d --build`.
+5. Ustaw `CFO_DOMAIN` w `.env` (Caddyfile `deploy/Caddyfile` czyta domenę ze zmiennej), ustaw rekordy DNS A/AAAA i uruchom: `docker compose --env-file .env -f deploy/docker-compose.vps.yml up -d --build` (jawny `--env-file` jest wymagany — bez niego Compose szuka `.env` w `deploy/`).
 6. Sprawdź z zewnątrz: `curl -fsS https://twoja-domena/api/health`; sprawdź certyfikat, przekierowanie HTTP→HTTPS oraz że `http://ip:3000` nie odpowiada. Utwórz konta seed tylko raz, następnie ustaw 2FA dla każdego użytkownika.
 7. Po każdej aktualizacji: najpierw zweryfikowany backup, potem pobranie kodu, build/restart, health check, logi bez sekretów i krótki test logowania. Nigdy nie uruchamiaj poleceń z Internetu w ciemno jako root.
 

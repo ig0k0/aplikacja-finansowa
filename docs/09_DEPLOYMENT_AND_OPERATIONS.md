@@ -216,7 +216,7 @@ Pelniejsza lista **co zostalo do zrobienia w backlogu** oraz **plan weryfikacji 
 
 ## 14. VPS z HTTPS (Caddy)
 
-Przyklad wdrozenia z reverse proxy i Let's Encrypt: katalog **`deploy/`** (`README.md`, `docker-compose.vps.yml`, `Caddyfile.example`).
+Przyklad wdrozenia z reverse proxy i Let's Encrypt: katalog **`deploy/`** (`README.md`, `docker-compose.vps.yml`, `Caddyfile`) oraz skrypty Oracle Cloud w **`deploy/oci/`**.
 
 Zmienne w `.env` na VPS:
 
