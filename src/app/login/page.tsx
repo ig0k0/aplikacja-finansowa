@@ -19,6 +19,10 @@ function getErrorMessage(error?: string) {
     return "Niepoprawny login lub haslo.";
   }
 
+  if (error === "totp_invalid") {
+    return "Niepoprawny kod 2FA. Zaloguj sie ponownie haslem i wpisz aktualny kod.";
+  }
+
   if (error === "rate_limited") {
     return "Zbyt wiele nieudanych prob logowania. Sprobuj ponownie za ok. 15 minut.";
   }

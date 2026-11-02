@@ -158,6 +158,8 @@ if [[ $OS == rhel ]]; then
   done
   firewall-cmd --reload >/dev/null
   firewall-cmd --list-services
+  # rpcbind (port 111) jest potrzebny tylko dla NFS — wylaczamy.
+  systemctl disable --now rpcbind.socket rpcbind.service >/dev/null 2>&1 || true
 else
   # Obrazy Ubuntu w OCI maja wlasne reguly iptables (/etc/iptables/rules.v4):
   # wpuszczaja tylko SSH i odrzucaja reszte. Oracle odradza UFW na tych obrazach,

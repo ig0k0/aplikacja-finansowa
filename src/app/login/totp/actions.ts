@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { recordAuditEvent } from "@/db/audit";
 import { deleteTotpLoginPending, findValidTotpLoginPending } from "@/db/totp-login";
 import { findUserById } from "@/db/users";
+import { getClientIpHash } from "@/lib/client-ip";
+import { recordLoginFailure } from "@/lib/login-rate-limit";
 import { createSession } from "@/lib/session";
 import { verifyTotpToken } from "@/lib/totp-app";
 
@@ -51,7 +53,11 @@ export async function completeTotpLoginAction(formData: FormData) {
       action: "login_totp_failure",
       meta: { reason: "invalid_token" },
     });
-    redirectTotpError(pendingId, "invalid");
+    // Jedna proba kodu na jedno poprawne haslo: bledny kod uniewaznia etap 2FA,
+    // a porazka liczy sie do limitu logowan (brak zgadywania kodow bez limitu).
+    deleteTotpLoginPending(pendingId);
+    recordLoginFailure(user.login, await getClientIpHash());
+    redirect("/login?error=totp_invalid");
   }
 
   deleteTotpLoginPending(pendingId);
