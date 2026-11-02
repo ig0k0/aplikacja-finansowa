@@ -24,7 +24,8 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    image: cfo-app:latest
+    # CFO_IMAGE w .env = gotowy obraz z GHCR (budowany przez GitHub Actions); brak = build lokalny.
+    image: ${CFO_IMAGE:-cfo-app:latest}
     # Port 3000 NIE jest publikowany na hoscie — dostep tylko z Caddy w sieci Dockera.
     expose:
       - "3000"

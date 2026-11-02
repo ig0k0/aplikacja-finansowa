@@ -101,12 +101,20 @@ if docker volume inspect cfo_app-data >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------- build
-log "Budowanie obrazu aplikacji (moze potrwac kilka minut na ARM)"
-"${COMPOSE[@]}" build --pull app
+APP_IMAGE="$(env_get CFO_IMAGE)"
+if [[ -n "$APP_IMAGE" ]]; then
+  log "Pobieranie gotowego obrazu $APP_IMAGE"
+  "${COMPOSE[@]}" pull app \
+    || die "Nie udalo sie pobrac obrazu. Sprawdz: docker login ghcr.io (patrz deploy/oci/README.md)."
+else
+  APP_IMAGE="cfo-app:latest"
+  log "Budowanie obrazu aplikacji lokalnie (na malej VM moze trwac bardzo dlugo — rozwaz CFO_IMAGE)"
+  "${COMPOSE[@]}" build --pull app
+fi
 
 # Wolumen utworzony przez wczesniejsza wersje (proces jako root) — napraw wlasciciela.
 if docker volume inspect cfo_app-data >/dev/null 2>&1; then
-  docker run --rm --user 0 -v cfo_app-data:/app/data --entrypoint chown cfo-app:latest -R 1000:1000 /app/data
+  docker run --rm --user 0 -v cfo_app-data:/app/data --entrypoint chown "$APP_IMAGE" -R 1000:1000 /app/data
 fi
 
 # ---------------------------------------------------------------- seed (tylko raz)
