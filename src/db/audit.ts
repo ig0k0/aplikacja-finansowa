@@ -1,4 +1,4 @@
-import { desc, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull, like, lt, or } from "drizzle-orm";
 import { db } from "./client";
 import { auditEvents } from "./schema";
 import { createId } from "../lib/ids";
@@ -20,6 +20,10 @@ export function recordAuditEvent(input: {
   const metaJson =
     input.meta && Object.keys(input.meta).length > 0 ? JSON.stringify(input.meta) : null;
 
+  if (input.userId === null) {
+    pruneAnonymousAuthEvents();
+  }
+
   db.insert(auditEvents)
     .values({
       id: createId("aud"),
@@ -28,6 +32,26 @@ export function recordAuditEvent(input: {
       metaJson,
       createdAt: nowIso(),
     })
+    .run();
+}
+
+const ANONYMOUS_AUTH_EVENT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Nieudane logowania bez konta moze generowac kazdy, kto zna adres aplikacji.
+ * Trzymamy je 30 dni, zeby dziennik nie rosl bez konca na malym dysku.
+ */
+function pruneAnonymousAuthEvents() {
+  const cutoff = new Date(Date.now() - ANONYMOUS_AUTH_EVENT_RETENTION_MS).toISOString();
+
+  db.delete(auditEvents)
+    .where(
+      and(
+        isNull(auditEvents.userId),
+        like(auditEvents.action, "login_%"),
+        lt(auditEvents.createdAt, cutoff),
+      ),
+    )
     .run();
 }
 

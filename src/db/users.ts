@@ -33,6 +33,7 @@ export function finalizeTotpEnrollment(userId: string): void {
       totpSecret: user.totpPendingSecret,
       totpPendingSecret: null,
       totpEnabled: true,
+      totpLastUsedStep: null,
       updatedAt: nowIso(),
     })
     .where(eq(users.id, userId))
@@ -55,8 +56,20 @@ export function disableUserTotp(userId: string): void {
       totpSecret: null,
       totpPendingSecret: null,
       totpEnabled: false,
+      totpLastUsedStep: null,
       updatedAt: nowIso(),
     })
+    .where(eq(users.id, userId))
+    .run();
+}
+
+export function markTotpStepUsed(userId: string, timeStep: number): void {
+  db.update(users).set({ totpLastUsedStep: timeStep }).where(eq(users.id, userId)).run();
+}
+
+export function updateUserPasswordHash(userId: string, passwordHash: string): void {
+  db.update(users)
+    .set({ passwordHash, updatedAt: nowIso() })
     .where(eq(users.id, userId))
     .run();
 }

@@ -18,6 +18,7 @@ export const users = sqliteTable("users", {
   totpSecret: text("totp_secret"),
   totpPendingSecret: text("totp_pending_secret"),
   totpEnabled: integer("totp_enabled", { mode: "boolean" }).notNull().default(false),
+  totpLastUsedStep: integer("totp_last_used_step"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -31,6 +32,7 @@ export const loginTotpPending = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     expiresAt: text("expires_at").notNull(),
     createdAt: text("created_at").notNull(),
+    attempts: integer("attempts").notNull().default(0),
   },
   (table) => ({
     expiresAtIdx: index("login_totp_pending_expires_at_idx").on(table.expiresAt),

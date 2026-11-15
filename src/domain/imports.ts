@@ -254,3 +254,36 @@ export function normalizeImportRow(
     }),
   };
 }
+
+/**
+ * Rozroznia identyczne wiersze w obrebie jednego pliku.
+ *
+ * Dwie takie same platnosci tego samego dnia (np. dwa bilety) maja ten sam klucz
+ * deduplikacji, wiec druga bylaby blednie pomijana jako duplikat. Kolejne wystapienia
+ * dostaja sufiks `#2`, `#3`... Ponowny import tego samego pliku daje te same klucze,
+ * wiec wykrywanie duplikatow miedzy importami dziala jak dotad.
+ */
+export function disambiguateRepeatedImportRows<T extends { normalized?: NormalizedImportRow }>(
+  rows: T[],
+): T[] {
+  const occurrences = new Map<string, number>();
+
+  return rows.map((row) => {
+    if (!row.normalized) {
+      return row;
+    }
+
+    const baseKey = row.normalized.dedupeKey;
+    const occurrence = (occurrences.get(baseKey) ?? 0) + 1;
+    occurrences.set(baseKey, occurrence);
+
+    if (occurrence === 1) {
+      return row;
+    }
+
+    return {
+      ...row,
+      normalized: { ...row.normalized, dedupeKey: `${baseKey}#${occurrence}` },
+    };
+  });
+}

@@ -79,7 +79,7 @@ export default async function TotpLoginPage({ searchParams }: TotpLoginPageProps
               inputMode="numeric"
               autoComplete="one-time-code"
               pattern="\d{6}"
-              maxLength={8}
+              maxLength={6}
               placeholder="123456"
               autoFocus
             />

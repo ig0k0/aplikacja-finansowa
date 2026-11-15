@@ -15,6 +15,7 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-1}
       TRUST_PROXY: ${TRUST_PROXY:-1}
       LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-8}
+      LOGIN_RATE_LIMIT_LOGIN_MAX: ${LOGIN_RATE_LIMIT_LOGIN_MAX:-20}
       BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
       BACKUP_DESTINATION: /app/backups
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
@@ -22,9 +23,21 @@ services:
       GOOGLE_DRIVE_RCLONE_PATH: ${GOOGLE_DRIVE_RCLONE_PATH:-}
       RCLONE_CONFIG: ${RCLONE_CONFIG:-}
       AI_MODE: ${AI_MODE:-disabled}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
     volumes:
       - app-data:/app/data
       - ../backups:/app/backups
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+      - /app/.next/cache:size=64m,uid=1000,gid=1000
+      - /home/node:size=16m,uid=1000,gid=1000
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
 
   caddy:

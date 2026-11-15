@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import Database from "better-sqlite3";
 import { applyMigrations } from "../db/apply-migrations";
 import { getDatabasePath } from "../db/database-path";
+import { requireBackupEncryptionKey } from "../lib/secrets";
 
 const scrypt = promisify(scryptCallback);
 const algorithm = "aes-256-gcm";
@@ -28,13 +29,7 @@ type BackupEnvelope = {
 };
 
 function requireBackupKey() {
-  const key = process.env.BACKUP_ENCRYPTION_KEY;
-
-  if (!key) {
-    throw new Error("BACKUP_ENCRYPTION_KEY is required.");
-  }
-
-  return key;
+  return requireBackupEncryptionKey();
 }
 
 async function deriveKey(secret: string, salt: Buffer) {

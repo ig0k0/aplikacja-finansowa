@@ -14,7 +14,7 @@ import {
   validateImportFileSize,
 } from "../domain/import-limits";
 import { computeAllocationSuggestion } from "../domain/investments";
-import { normalizeImportRow } from "../domain/imports";
+import { disambiguateRepeatedImportRows, normalizeImportRow } from "../domain/imports";
 import { parseAmountToMinor } from "../domain/transactions";
 import {
   convertQuoteMinorToPlnMinor,
@@ -23,7 +23,16 @@ import {
 } from "../domain/pricing";
 import { detectBankImportMapping } from "../imports/bank-parsers";
 import { parseImportFile } from "../imports/parse-file";
-import { hashPassword, verifyPassword } from "../lib/password";
+import { generateSync } from "otplib";
+import { resolveClientIp } from "../lib/client-ip";
+import {
+  hashPassword,
+  validateNewPassword,
+  verifyPassword,
+  verifyPasswordAgainstDummy,
+} from "../lib/password";
+import { requireBackupEncryptionKey, requireSessionSecret } from "../lib/secrets";
+import { checkTotpToken, generateTotpSecret } from "../lib/totp-app";
 
 const password = "test-password";
 const hash = await hashPassword(password);
@@ -109,6 +118,90 @@ assert.equal(zenDetected?.mapping.dateColumn, "Date");
 assert.equal(zenDetected?.mapping.amountColumn, "Settlement amount");
 assert.equal(zenParsed.rows.length, 66);
 
+// Wyciag zawiera identyczne platnosci tego samego dnia — kazda musi dostac wlasny klucz,
+// inaczej import gubi transakcje jako rzekome duplikaty.
+const zenNormalizedRows = disambiguateRepeatedImportRows(
+  zenParsed.rows.map((row) => ({
+    normalized: normalizeImportRow(
+      "usr_test",
+      row,
+      {
+        dateColumn: "Date",
+        amountColumn: "Settlement amount",
+        descriptionColumn: "Description",
+        categoryId: "cat_test",
+        defaultType: "expense",
+      },
+      { financialAccountId: "acc_test" },
+    ),
+  })),
+);
+const zenDedupeKeys = zenNormalizedRows.map((row) => row.normalized.dedupeKey);
+assert.equal(new Set(zenDedupeKeys).size, 66);
+assert.deepEqual(
+  disambiguateRepeatedImportRows(zenNormalizedRows).map((row) => row.normalized.dedupeKey),
+  zenDedupeKeys,
+  "Ponowny import tego samego pliku musi dawac te same klucze.",
+);
+
+// --- Uwierzytelnianie: TOTP, hasla, sekrety, adres klienta ---
+{
+  const totpSecret = generateTotpSecret();
+  const totpCode = generateSync({ secret: totpSecret });
+  const firstUse = checkTotpToken(totpSecret, totpCode);
+  assert.equal(firstUse.valid, true);
+  assert.equal(
+    firstUse.valid && checkTotpToken(totpSecret, totpCode, firstUse.timeStep).valid,
+    false,
+    "Ten sam kod TOTP nie moze zostac uzyty drugi raz.",
+  );
+  assert.equal(checkTotpToken(totpSecret, "12345").valid, false);
+  assert.equal(checkTotpToken(totpSecret, "abcdef").valid, false);
+
+  assert.equal(await verifyPasswordAgainstDummy("cokolwiek"), false);
+  assert.equal(await verifyPassword("x", "scrypt:00:"), false);
+  assert.notEqual(validateNewPassword("krotkie"), null);
+  assert.equal(validateNewPassword("wystarczajaco-dlugie-haslo"), null);
+
+  const previousEnv = {
+    NODE_ENV: process.env.NODE_ENV,
+    SESSION_SECRET: process.env.SESSION_SECRET,
+    BACKUP_ENCRYPTION_KEY: process.env.BACKUP_ENCRYPTION_KEY,
+    TRUST_PROXY: process.env.TRUST_PROXY,
+    CLIENT_IP_HEADER: process.env.CLIENT_IP_HEADER,
+  };
+  const env = process.env as Record<string, string | undefined>;
+
+  try {
+    env.NODE_ENV = "production";
+    env.SESSION_SECRET = "change-me-before-use";
+    assert.throws(() => requireSessionSecret(), /zbyt slaby/);
+    env.SESSION_SECRET = "0123456789abcdef0123456789abcdef";
+    assert.equal(requireSessionSecret().length, 32);
+    env.BACKUP_ENCRYPTION_KEY = "change-me-backup-key";
+    assert.throws(() => requireBackupEncryptionKey(), /zbyt slaby/);
+
+    const spoofed = new Headers({ "x-forwarded-for": "6.6.6.6, 203.0.113.9" });
+    delete env.TRUST_PROXY;
+    assert.equal(resolveClientIp(spoofed), "direct", "Bez TRUST_PROXY naglowki klienta sa ignorowane.");
+    env.TRUST_PROXY = "1";
+    assert.equal(resolveClientIp(spoofed), "203.0.113.9", "Liczy sie adres dopisany przez proxy.");
+    env.CLIENT_IP_HEADER = "cf-connecting-ip";
+    assert.equal(
+      resolveClientIp(new Headers({ "cf-connecting-ip": "198.51.100.4", "x-forwarded-for": "6.6.6.6" })),
+      "198.51.100.4",
+    );
+  } finally {
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value === undefined) {
+        delete env[key];
+      } else {
+        env[key] = value;
+      }
+    }
+  }
+}
+
 const zenExpense = normalizeImportRow("usr_test", zenParsed.rows[0]!, {
   dateColumn: "Date",
   amountColumn: "Settlement amount",
@@ -172,12 +265,37 @@ try {
   } = await import("../db/transactions");
   const { insertAiSuggestion } = await import("../db/ai-suggestions");
   const { migrateLegacyDedupeKeys } = await import("../db/dedupe-migration");
-  const { hashIpForTests, isLoginRateLimitEnabled } = await import("../lib/login-rate-limit");
+  const {
+    clearLoginFailures,
+    hashIpForTests,
+    isLoginAllowed,
+    isLoginRateLimitEnabled,
+    recordLoginFailure,
+  } = await import("../lib/login-rate-limit");
 
   applyMigrations(rawDb);
 
   assert.equal(isLoginRateLimitEnabled(), process.env.LOGIN_RATE_LIMIT_DISABLED !== "1");
   assert.equal(hashIpForTests("203.0.113.1").length, 32);
+
+  if (isLoginRateLimitEnabled()) {
+    // Limit na pare login + adres (domyslnie 8).
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      assert.equal(isLoginAllowed("Limit-Test", "ip-a"), true);
+      recordLoginFailure("limit-test", "ip-a");
+    }
+    assert.equal(isLoginAllowed("limit-test", "ip-a"), false);
+    assert.equal(isLoginAllowed("limit-test", "ip-b"), true);
+
+    // Limit na sam login (domyslnie 20) — zmiana adresu nie daje kolejnych prob.
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      recordLoginFailure("limit-test", `ip-rotating-${attempt}`);
+    }
+    assert.equal(isLoginAllowed("limit-test", "ip-nowy"), false);
+    assert.equal(isLoginAllowed("inny-login", "ip-a"), true);
+    clearLoginFailures("limit-test");
+    assert.equal(isLoginAllowed("limit-test", "ip-a"), true);
+  }
 
   const now = "2026-09-05T00:00:00.000Z";
   rawDb

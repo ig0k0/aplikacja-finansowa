@@ -1,0 +1,75 @@
+# Maly VPS (np. Mikrus 2.1, 1 GB RAM): gotowy obraz z GHCR, bez budowania na serwerze
+# i bez portow otwartych na swiat. Instrukcja krok po kroku: deploy/MIKRUS.md
+#
+#   Wariant prywatny (zalecany):  docker compose -f deploy/docker-compose.mikrus.yml up -d
+#                                 + Tailscale na hoscie (`tailscale serve`)
+#   Wariant publiczny:            docker compose -f deploy/docker-compose.mikrus.yml --profile cloudflare up -d
+
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/ig0k0/aplikacja-finansowa:latest}
+    # Tylko petla zwrotna hosta: dostep z zewnatrz wylacznie przez Tailscale albo tunel.
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      DATABASE_URL: /app/data/app.db
+      SESSION_SECRET: ${SESSION_SECRET:?Ustaw SESSION_SECRET (openssl rand -hex 32)}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:?Ustaw BACKUP_ENCRYPTION_KEY (openssl rand -base64 32)}
+      BACKUP_DESTINATION: /app/backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      COOKIE_SECURE: "1"
+      TRUST_PROXY: "1"
+      CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
+      LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-8}
+      LOGIN_RATE_LIMIT_LOGIN_MAX: ${LOGIN_RATE_LIMIT_LOGIN_MAX:-20}
+      GOOGLE_DRIVE_RCLONE_REMOTE: ${GOOGLE_DRIVE_RCLONE_REMOTE:-}
+      GOOGLE_DRIVE_RCLONE_PATH: ${GOOGLE_DRIVE_RCLONE_PATH:-}
+      RCLONE_CONFIG: /app/data/rclone.conf
+      AI_MODE: ${AI_MODE:-disabled}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      # Zostawia zapas na system i tunel przy 1 GB RAM.
+      NODE_OPTIONS: --max-old-space-size=512
+    volumes:
+      - app-data:/app/data
+      - ../backups:/app/backups
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+      - /app/.next/cache:size=64m,uid=1000,gid=1000
+      - /home/node:size=16m,uid=1000,gid=1000
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 700m
+    pids_limit: 256
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  # Wariant publiczny: tunel wychodzacy do Cloudflare (zadnych portow przychodzacych).
+  # W panelu Zero Trust ustaw usluge tunelu na http://app:3000 i wlacz Cloudflare Access.
+  cloudflared:
+    profiles: ["cloudflare"]
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      app:
+        condition: service_healthy
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    restart: unless-stopped
+
+volumes:
+  app-data:

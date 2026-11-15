@@ -1,23 +1,18 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, lt, ne } from "drizzle-orm";
 import type { User } from "@/db/schema";
 import { shouldUseSecureSessionCookies } from "./cookie-security";
 import { createId } from "./ids";
+import { requireSessionSecret } from "./secrets";
 import { nowIso } from "./time";
 
 const sessionCookieName = "cfo_session";
 const sessionDurationMs = 1000 * 60 * 60 * 24 * 14;
 
 function hashSessionToken(token: string) {
-  const secret = process.env.SESSION_SECRET;
-
-  if (!secret) {
-    throw new Error("SESSION_SECRET is required for local sessions.");
-  }
-
-  return createHmac("sha256", secret).update(token).digest("hex");
+  return createHmac("sha256", requireSessionSecret()).update(token).digest("hex");
 }
 
 export async function createSession(userId: string) {
@@ -28,6 +23,9 @@ export async function createSession(userId: string) {
   const token = randomBytes(32).toString("hex");
   const tokenHash = hashSessionToken(token);
   const expiresAt = new Date(Date.now() + sessionDurationMs).toISOString();
+
+  // Wygasle sesje nie sa juz honorowane; usuwamy je przy okazji logowania.
+  db.delete(sessions).where(lt(sessions.expiresAt, nowIso())).run();
 
   db.insert(sessions)
     .values({
@@ -100,4 +98,28 @@ export async function destroySession() {
   }
 
   cookieStore.delete(sessionCookieName);
+}
+
+/**
+ * Usuwa wszystkie sesje uzytkownika poza biezaca (np. po zmianie hasla
+ * albo na zadanie "wyloguj wszedzie"). Zwraca liczbe zakonczonych sesji.
+ */
+export async function destroyOtherSessions(userId: string): Promise<number> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(sessionCookieName)?.value;
+  const [{ db }, { sessions }] = await Promise.all([
+    import("@/db/client"),
+    import("@/db/schema"),
+  ]);
+
+  const result = db
+    .delete(sessions)
+    .where(
+      token
+        ? and(eq(sessions.userId, userId), ne(sessions.tokenHash, hashSessionToken(token)))
+        : eq(sessions.userId, userId),
+    )
+    .run();
+
+  return result.changes;
 }

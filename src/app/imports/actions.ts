@@ -8,7 +8,11 @@ import {
   isOcrImageFile,
   validateImportFileSize,
 } from "@/domain/import-limits";
-import { importMappingSchema, normalizeImportRow } from "@/domain/imports";
+import {
+  disambiguateRepeatedImportRows,
+  importMappingSchema,
+  normalizeImportRow,
+} from "@/domain/imports";
 import { requireUser } from "@/lib/session";
 import { detectBankImportMapping } from "@/imports/bank-parsers";
 import { parseImportFile } from "@/imports/parse-file";
@@ -98,7 +102,7 @@ export async function createImportPreviewAction(formData: FormData) {
         : (detected?.sourceInstitution ?? sourceInstitutionRaw) || "generic";
     const { createImportPreview } = await import("@/db/imports");
     const normalizeStartedAt = Date.now();
-    const rows = parsed.rows.map((row, index) => {
+    const rows = disambiguateRepeatedImportRows(parsed.rows.map((row, index) => {
       try {
         return {
           rowNumber: index + 2,
@@ -112,7 +116,7 @@ export async function createImportPreviewAction(formData: FormData) {
           error: error instanceof Error ? error.message : "Niepoprawny wiersz.",
         };
       }
-    });
+    }));
     const normalizeDurationMs = Date.now() - normalizeStartedAt;
 
     batchId = createImportPreview({

@@ -1,3 +1,4 @@
+import { tmpdir } from "node:os";
 import { parse } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
@@ -286,7 +287,9 @@ function neutralExtractedTextToMatrix(text: string): unknown[][] {
 
 async function parseReceiptImage(buffer: Buffer): Promise<ParsedImportFile> {
   const { createWorker } = await import("tesseract.js");
-  const worker = await createWorker("pol");
+  // Dane jezykowe sa pobierane przy pierwszym uzyciu; trzymamy je w katalogu tymczasowym,
+  // bo system plikow kontenera produkcyjnego jest tylko do odczytu.
+  const worker = await createWorker("pol", undefined, { cachePath: tmpdir() });
 
   try {
     const {

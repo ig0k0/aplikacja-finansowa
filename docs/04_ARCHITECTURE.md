@@ -94,7 +94,7 @@ Przechowuje aktywa, operacje, cele, alokacje i wyceny. **Ceny (backlog MVP):** `
 
 ### Operations
 
-Backup, restore, eksport danych, health check (`GET /api/health`) i zadania administracyjne. **VPS:** `src/middleware.ts` (naglowki), `src/lib/login-rate-limit.ts`, `deploy/` (Caddy + HTTPS).
+Backup, restore, eksport danych, health check (`GET /api/health`) i zadania administracyjne. **VPS:** `src/proxy.ts` (naglowki, CSP), `src/lib/login-rate-limit.ts`, `deploy/` (Caddy + HTTPS).
 
 ## 5. Przeplyw Importu
 

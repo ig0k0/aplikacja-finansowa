@@ -3,6 +3,15 @@ node_modules
 data
 backups
 .env
-.env.local
+.env.*
+!.env.example
 .git
+.github
+.cursor
+graphify-out
+file_sample
+docs
+deploy
+*.tsbuildinfo
+.DS_Store
 npm-debug.log*

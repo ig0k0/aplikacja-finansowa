@@ -5,7 +5,14 @@ import {
   restoreEncryptedBackup,
   verifyEncryptedBackup,
 } from "../ops/encrypted-backup";
-import { recordAuditEvent } from "../db/audit";
+
+// Modul audytu otwiera baze przy imporcie. Ladujemy go dopiero po operacji, zeby
+// po `restore` zapisac zdarzenie w odtworzonej bazie, a nie w pliku sprzed podmiany.
+async function recordAuditEvent(input: Parameters<typeof import("../db/audit").recordAuditEvent>[0]) {
+  const audit = await import("../db/audit");
+
+  audit.recordAuditEvent(input);
+}
 
 function usage() {
   console.log(`Usage:
@@ -19,7 +26,7 @@ const [command, filePath] = process.argv.slice(2);
 try {
   if (command === "create") {
     const outputPath = await createEncryptedBackup(filePath);
-    recordAuditEvent({
+    await recordAuditEvent({
       userId: null,
       action: "backup_created",
       meta: { fileName: path.basename(outputPath), source: "cli" },
@@ -41,7 +48,7 @@ try {
       process.exitCode = 1;
     } else {
       const databasePath = await restoreEncryptedBackup(filePath);
-      recordAuditEvent({
+      await recordAuditEvent({
         userId: null,
         action: "backup_restored",
         meta: { fileName: path.basename(filePath) },

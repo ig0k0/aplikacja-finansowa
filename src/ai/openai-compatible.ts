@@ -1,5 +1,8 @@
 import type { AiRuntimeConfig } from "@/lib/ai-config";
 
+/** Bez limitu czasu zawieszony model blokowalby zadanie uzytkownika w nieskonczonosc. */
+const AI_REQUEST_TIMEOUT_MS = 30_000;
+
 export async function completeChatText(
   config: AiRuntimeConfig,
   system: string,
@@ -23,6 +26,7 @@ export async function completeChatText(
       ],
       temperature: 0.1,
     }),
+    signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
   });
 
   if (!res.ok) {

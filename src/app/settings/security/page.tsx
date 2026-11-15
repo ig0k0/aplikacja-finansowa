@@ -2,11 +2,14 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import {
   cancelTotpEnrollmentAction,
+  changePasswordAction,
   confirmTotpEnrollmentAction,
+  logoutOtherSessionsAction,
   disableTotpAction,
   startTotpEnrollmentAction,
 } from "./actions";
 import { buildTotpKeyUri } from "@/lib/totp-app";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +19,8 @@ type SecurityPageProps = {
     error?: string;
     saved?: string;
     disabled?: string;
+    password?: string;
+    sessions?: string;
   }>;
 };
 
@@ -48,6 +53,18 @@ export default async function SecuritySettingsPage({ searchParams }: SecurityPag
         return "Niepoprawne haslo.";
       case "bad_totp":
         return "Niepoprawny kod TOTP przy wylaczaniu.";
+      case "rate_limited":
+        return "Zbyt wiele blednych prob. Odczekaj kwadrans i sprobuj ponownie.";
+      case "password_missing":
+        return "Podaj aktualne i nowe haslo.";
+      case "password_mismatch":
+        return "Nowe haslo i jego powtorzenie roznia sie.";
+      case "password_weak":
+        return `Nowe haslo musi miec co najmniej ${MIN_PASSWORD_LENGTH} znakow.`;
+      case "password_same":
+        return "Nowe haslo musi byc inne niz aktualne.";
+      case "bad_totp_password":
+        return "Niepoprawny kod TOTP — haslo nie zostalo zmienione.";
       default:
         return null;
     }
@@ -77,7 +94,75 @@ export default async function SecuritySettingsPage({ searchParams }: SecurityPag
         </p>
       ) : null}
 
+      {params.password === "changed" ? (
+        <p className="card" style={{ borderColor: "#86efac", marginBottom: 24 }}>
+          Haslo zostalo zmienione. Pozostale sesje tego konta zostaly wylogowane.
+        </p>
+      ) : null}
+
+      {params.sessions !== undefined ? (
+        <p className="card" style={{ borderColor: "#93c5fd", marginBottom: 24 }}>
+          Wylogowano pozostale sesje: {Number(params.sessions) || 0}.
+        </p>
+      ) : null}
+
       {errorText ? <p className="card error">{errorText}</p> : null}
+
+      <section className="card" style={{ marginBottom: 24 }}>
+        <h2 style={{ marginTop: 0 }}>Zmiana hasla</h2>
+        <p className="muted">
+          Minimum {MIN_PASSWORD_LENGTH} znakow. Po zmianie wszystkie inne sesje tego konta zostana wylogowane.
+        </p>
+        <form action={changePasswordAction} className="grid" style={{ marginTop: 16, maxWidth: 400 }}>
+          <label className="field">
+            Aktualne haslo
+            <input className="input" name="currentPassword" type="password" autoComplete="current-password" required />
+          </label>
+          <label className="field">
+            Nowe haslo
+            <input
+              className="input"
+              name="newPassword"
+              type="password"
+              autoComplete="new-password"
+              minLength={MIN_PASSWORD_LENGTH}
+              required
+            />
+          </label>
+          <label className="field">
+            Powtorz nowe haslo
+            <input
+              className="input"
+              name="newPasswordRepeat"
+              type="password"
+              autoComplete="new-password"
+              minLength={MIN_PASSWORD_LENGTH}
+              required
+            />
+          </label>
+          {user.totpEnabled ? (
+            <label className="field">
+              Kod TOTP
+              <input className="input" inputMode="numeric" maxLength={6} name="token" placeholder="123456" required />
+            </label>
+          ) : null}
+          <button className="button" type="submit">
+            Zmien haslo
+          </button>
+        </form>
+      </section>
+
+      <section className="card" style={{ marginBottom: 24 }}>
+        <h2 style={{ marginTop: 0 }}>Aktywne sesje</h2>
+        <p className="muted">
+          Jesli logowales sie na cudzym urzadzeniu albo podejrzewasz przejecie sesji, wyloguj wszystkie pozostale.
+        </p>
+        <form action={logoutOtherSessionsAction}>
+          <button className="button button-secondary" type="submit">
+            Wyloguj pozostale sesje
+          </button>
+        </form>
+      </section>
 
       <section className="card">
         <h2 style={{ marginTop: 0 }}>Logowanie dwuetapowe (TOTP)</h2>

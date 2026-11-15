@@ -16,6 +16,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate-dedupe": "node --import tsx src/scripts/migrate-dedupe-keys.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "user:set-password": "tsx src/scripts/set-password.ts",
     "db:compact": "node --import tsx src/scripts/compact-database.ts",
     "backup:create": "tsx src/scripts/backup.ts create",
     "backup:verify": "tsx src/scripts/backup.ts verify",
@@ -28,7 +29,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",
-    "csv-parse": "^6.2.1",
+    "csv-parse": "^7.0.3",
     "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^5.7.2",
     "jszip": "^3.10.1",
@@ -40,6 +41,7 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "tesseract.js": "^7.0.0",
+    "tsx": "^4.23.15",
     "zod": "^4.4.1"
   },
   "overrides": {
@@ -55,7 +57,6 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.4",
-    "tsx": "^4.21.0",
     "typescript": "^6.0.3"
   }
 }
