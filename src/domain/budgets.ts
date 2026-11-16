@@ -1,13 +1,14 @@
 import { z } from "zod";
+import { AMOUNT_PATTERN } from "./transactions";
 
 const amountSchema = z
   .string()
   .trim()
   .min(1, "Limit jest wymagany.")
-  .regex(/^\d+([,.]\d{1,2})?$/, "Limit musi miec format np. 500,00.");
+  .regex(AMOUNT_PATTERN, "Limit musi miec format np. 500,00.");
 
 export const budgetLimitSchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/, "Miesiac jest wymagany."),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Miesiac jest wymagany."),
   categoryId: z.string().min(1, "Kategoria jest wymagana."),
   limit: amountSchema,
 });

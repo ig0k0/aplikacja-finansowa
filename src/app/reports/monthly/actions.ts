@@ -7,7 +7,9 @@ import { parseAmountToMinor } from "@/domain/transactions";
 import { requireUser } from "@/lib/session";
 
 function redirectWithError(month: string, message: string): never {
-  redirect(`/reports/monthly?month=${month}&error=${encodeURIComponent(message)}`);
+  redirect(
+    `/reports/monthly?month=${encodeURIComponent(month)}&error=${encodeURIComponent(message)}`,
+  );
 }
 
 export async function saveBudgetLimitAction(formData: FormData) {

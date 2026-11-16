@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { parseAmountToMinor, transactionTypes, type TransactionType } from "./transactions";
+import {
+  AMOUNT_PATTERN,
+  isValidIsoDate,
+  parseAmountToMinor,
+  transactionTypes,
+  type TransactionType,
+} from "./transactions";
 
 export const importMappingSchema = z.object({
   dateColumn: z.string().min(1, "Kolumna daty jest wymagana."),
@@ -57,6 +63,16 @@ const ENGLISH_MONTHS: Record<string, string> = {
 };
 
 function parseDate(value: string) {
+  const isoDate = toIsoDate(value);
+
+  if (!isValidIsoDate(isoDate)) {
+    throw new Error(`Nieprawidlowa data: ${value}`);
+  }
+
+  return isoDate;
+}
+
+function toIsoDate(value: string) {
   const trimmed = value.trim();
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
@@ -102,7 +118,7 @@ function normalizeAmount(value: string) {
     .replace(",", ".");
   const withoutSign = normalized.replace(/^-/, "");
 
-  if (!/^\d+(\.\d{1,2})?$/.test(withoutSign)) {
+  if (!AMOUNT_PATTERN.test(withoutSign)) {
     throw new Error(`Nieprawidlowa kwota: ${value}`);
   }
 

@@ -3,15 +3,36 @@ import { z } from "zod";
 export const transactionTypes = ["income", "expense"] as const;
 export type TransactionType = (typeof transactionTypes)[number];
 
+/**
+ * Najwyzej 10 cyfr przed przecinkiem: kwota w groszach zostaje bezpieczna liczba calkowita.
+ * Dluzsze wartosci trafialyby do bazy jako niedokladna liczba zmiennoprzecinkowa.
+ */
+export const AMOUNT_PATTERN = /^\d{1,10}([,.]\d{1,2})?$/;
+
+/** Data `RRRR-MM-DD`, ktora faktycznie istnieje w kalendarzu (odrzuca np. 2026-13-45). */
+export function isValidIsoDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 const amountSchema = z
   .string()
   .trim()
   .min(1, "Kwota jest wymagana.")
-  .regex(/^\d+([,.]\d{1,2})?$/, "Kwota musi miec format np. 12,34.");
+  .regex(AMOUNT_PATTERN, "Kwota musi miec format np. 12,34.")
+  .refine((value) => parseAmountToMinor(value) > 0, "Kwota musi byc wieksza od zera.");
 
 export const manualTransactionSchema = z.object({
   type: z.enum(transactionTypes),
-  transactionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data jest wymagana."),
+  transactionDate: z
+    .string()
+    .min(1, "Data jest wymagana.")
+    .refine(isValidIsoDate, "Niepoprawna data."),
   amount: amountSchema,
   categoryId: z.string().min(1, "Kategoria jest wymagana."),
   financialAccountId: z.string().optional(),

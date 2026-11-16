@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { quoteCurrencies } from "./pricing";
-import { parseAmountToMinor } from "./transactions";
+import { AMOUNT_PATTERN, isValidIsoDate, parseAmountToMinor } from "./transactions";
 
 export const investmentAssetTypes = [
   "etf",
@@ -26,7 +26,7 @@ const amountSchema = z
   .string()
   .trim()
   .min(1, "Kwota jest wymagana.")
-  .regex(/^\d+([,.]\d{1,2})?$/, "Kwota musi miec format np. 12,34.");
+  .regex(AMOUNT_PATTERN, "Kwota musi miec format np. 12,34.");
 
 const optionalAmountSchema = z
   .string()
@@ -51,7 +51,7 @@ export const newInvestmentAssetSchema = z.object({
 export const investmentOperationFormSchema = z.object({
   assetId: z.string().min(1),
   type: z.enum(investmentOperationTypes),
-  operationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data jest wymagana."),
+  operationDate: z.string().min(1, "Data jest wymagana.").refine(isValidIsoDate, "Niepoprawna data."),
   amount: amountSchema,
   fee: optionalAmountSchema,
   quantityDelta: z

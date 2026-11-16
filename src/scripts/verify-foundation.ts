@@ -15,7 +15,11 @@ import {
 } from "../domain/import-limits";
 import { computeAllocationSuggestion } from "../domain/investments";
 import { disambiguateRepeatedImportRows, normalizeImportRow } from "../domain/imports";
-import { parseAmountToMinor } from "../domain/transactions";
+import {
+  isValidIsoDate,
+  manualTransactionSchema,
+  parseAmountToMinor,
+} from "../domain/transactions";
 import {
   convertQuoteMinorToPlnMinor,
   positionMarketValuePlnMinor,
@@ -143,6 +147,61 @@ assert.deepEqual(
   zenDedupeKeys,
   "Ponowny import tego samego pliku musi dawac te same klucze.",
 );
+
+// --- Walidacja dat i kwot ---
+{
+  assert.equal(isValidIsoDate("2026-02-28"), true);
+  assert.equal(isValidIsoDate("2026-02-30"), false);
+  assert.equal(isValidIsoDate("2026-13-45"), false);
+
+  const baseTransaction = {
+    type: "expense",
+    transactionDate: "2026-11-12",
+    amount: "12,34",
+    categoryId: "cat_test",
+    description: "test",
+  };
+  assert.equal(manualTransactionSchema.safeParse(baseTransaction).success, true);
+
+  for (const override of [
+    { transactionDate: "2026-13-45" },
+    { amount: "0" },
+    { amount: "0,00" },
+    { amount: "99999999999999999999" },
+    { amount: "-5" },
+  ]) {
+    assert.equal(
+      manualTransactionSchema.safeParse({ ...baseTransaction, ...override }).success,
+      false,
+      `Powinno zostac odrzucone: ${JSON.stringify(override)}`,
+    );
+  }
+
+  const importMapping = {
+    dateColumn: "Data",
+    amountColumn: "Kwota",
+    descriptionColumn: "Opis",
+    categoryId: "cat_test",
+    defaultType: "expense" as const,
+  };
+  assert.throws(
+    () => normalizeImportRow("usr_test", { Data: "2026-99-99", Kwota: "-1,00", Opis: "x" }, importMapping),
+    /Nieprawidlowa data/,
+  );
+  assert.throws(
+    () => normalizeImportRow("usr_test", { Data: "31.02.2026", Kwota: "-1,00", Opis: "x" }, importMapping),
+    /Nieprawidlowa data/,
+  );
+  assert.throws(
+    () =>
+      normalizeImportRow(
+        "usr_test",
+        { Data: "2026-01-05", Kwota: "99999999999999999999", Opis: "x" },
+        importMapping,
+      ),
+    /Nieprawidlowa kwota/,
+  );
+}
 
 // --- Uwierzytelnianie: TOTP, hasla, sekrety, adres klienta ---
 {
