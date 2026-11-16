@@ -4,6 +4,7 @@ import { formatCurrencyMinor, formatDate, todayInputValue } from "@/lib/format";
 import { toTransactionTypeLabel, type TransactionType } from "@/domain/transactions";
 import {
   createTransactionAction,
+  deleteTransactionAction,
   updateTransactionCategoryAction,
 } from "./actions";
 
@@ -16,6 +17,7 @@ type TransactionsPageProps = {
     query?: string;
     error?: string;
     created?: string;
+    deleted?: string;
   }>;
 };
 
@@ -74,6 +76,11 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
       {params.created ? (
         <p className="card" style={{ borderColor: "#86efac" }}>
           Transakcja zostala dodana.
+        </p>
+      ) : null}
+      {params.deleted ? (
+        <p className="card" style={{ borderColor: "#fde047" }}>
+          Transakcja zostala usunieta.
         </p>
       ) : null}
 
@@ -195,6 +202,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                   <th>Opis</th>
                   <th>Kategoria</th>
                   <th>Kwota</th>
+                  <th>Usun</th>
                 </tr>
               </thead>
               <tbody>
@@ -244,6 +252,18 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                       </form>
                     </td>
                     <td>{formatCurrencyMinor(transaction.amountPlnMinor)}</td>
+                    <td>
+                      <form action={deleteTransactionAction} className="inline-form">
+                        <input name="transactionId" type="hidden" value={transaction.id} />
+                        <label className="muted field-row">
+                          <input name="confirm" type="checkbox" value="1" required />
+                          Na pewno
+                        </label>
+                        <button className="button button-secondary" type="submit">
+                          Usun
+                        </button>
+                      </form>
+                    </td>
                   </tr>
                 ))}
               </tbody>

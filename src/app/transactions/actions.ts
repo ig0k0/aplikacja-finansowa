@@ -84,3 +84,36 @@ export async function updateTransactionCategoryAction(formData: FormData) {
   revalidatePath("/investments");
   revalidatePath("/insights");
 }
+
+export async function deleteTransactionAction(formData: FormData) {
+  const user = await requireUser();
+  const transactionId = String(formData.get("transactionId") ?? "");
+
+  if (!transactionId) {
+    redirectWithError("Brak identyfikatora transakcji.");
+  }
+
+  // Usuwanie jest nieodwracalne, wiec wymagamy jawnego potwierdzenia takze po stronie serwera.
+  if (String(formData.get("confirm") ?? "") !== "1") {
+    redirectWithError("Zaznacz potwierdzenie, aby usunac transakcje.");
+  }
+
+  try {
+    const [{ deleteTransactionForUser }, { recordAuditEvent }] = await Promise.all([
+      import("@/db/transactions"),
+      import("@/db/audit"),
+    ]);
+
+    deleteTransactionForUser(user.id, transactionId);
+    recordAuditEvent({ userId: user.id, action: "transaction_deleted", meta: { transactionId } });
+  } catch (error) {
+    redirectWithError(error instanceof Error ? error.message : "Nie udalo sie usunac transakcji.");
+  }
+
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  revalidatePath("/review");
+  revalidatePath("/investments");
+  revalidatePath("/insights");
+  redirect("/transactions?deleted=1");
+}

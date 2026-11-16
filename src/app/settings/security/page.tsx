@@ -52,7 +52,7 @@ export default async function SecuritySettingsPage({ searchParams }: SecurityPag
       case "bad_password":
         return "Niepoprawne haslo.";
       case "bad_totp":
-        return "Niepoprawny kod TOTP przy wylaczaniu.";
+        return "Kod TOTP jest niepoprawny albo byl juz uzyty. Poczekaj na nastepny kod w aplikacji i sprobuj ponownie.";
       case "rate_limited":
         return "Zbyt wiele blednych prob. Odczekaj kwadrans i sprobuj ponownie.";
       case "password_missing":
@@ -64,7 +64,7 @@ export default async function SecuritySettingsPage({ searchParams }: SecurityPag
       case "password_same":
         return "Nowe haslo musi byc inne niz aktualne.";
       case "bad_totp_password":
-        return "Niepoprawny kod TOTP — haslo nie zostalo zmienione.";
+        return "Kod TOTP jest niepoprawny albo byl juz uzyty — haslo nie zostalo zmienione. Poczekaj na nastepny kod i sprobuj ponownie.";
       default:
         return null;
     }

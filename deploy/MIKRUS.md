@@ -13,7 +13,7 @@ zadnego portu na swiat — dostep idzie przez Tailscale (prywatnie) albo tunel C
 |------|------------------|
 | Bezczynnosc po starcie | ok. 65 MB |
 | Zwykla praca (logowanie, raporty, import wyciagu, PDF) | ok. 300 MB |
-| Skrajny przypadek: import 45 000 wierszy z pliku 12 MB | ok. 585 MB |
+| Skrajny przypadek: import 45 000 wierszy z pliku 12 MB | ok. 610 MB |
 
 Limit kontenera to 700 MB, wiec 1 GB RAM wystarcza. Dodaj 1 GB pliku wymiany jako bufor
 na duze importy i OCR zdjec.

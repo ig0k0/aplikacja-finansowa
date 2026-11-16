@@ -448,3 +448,15 @@ export function setTransactionCategorizationStatusForUser(
     .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
     .run();
 }
+
+/** Trwale usuwa transakcje uzytkownika. Powiazane sugestie AI znikaja kaskadowo. */
+export function deleteTransactionForUser(userId: string, transactionId: string) {
+  const result = db
+    .delete(transactions)
+    .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
+    .run();
+
+  if (result.changes === 0) {
+    throw new Error("Nie znaleziono transakcji.");
+  }
+}

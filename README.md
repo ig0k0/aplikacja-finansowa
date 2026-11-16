@@ -2,6 +2,8 @@
 
 Self-hosted aplikacja webowa do rejestrowania, importowania i analizowania finansow osobistych dla dwoch osob w rodzinie. Projekt ma laczyc szybkie wpisywanie wydatkow, import plikow bankowych, kategoryzacje wspierana przez AI, analize budzetow, majatku netto oraz inwestycji.
 
+**Wersja 1.0.0** — gotowa do wdrozenia. Lista zmian: [CHANGELOG.md](CHANGELOG.md). Wdrozenie na maly VPS (Tailscale / Cloudflare Tunnel): [deploy/MIKRUS.md](deploy/MIKRUS.md).
+
 **Status implementacji:** etapy **0–8** i priorytetowe elementy backlogu sa w kodzie. Obejmuje to parsery CSV dla mBank, PKO BP, Revolut i ZEN, analityke `/insights`, inwestycje, backup/audyt, 2FA TOTP, PDF/OCR oraz VPS/HTTPS MVP. Szczegolowy stan i checklisty sa w `docs/10_ROADMAP.md`.
 
 **Nastepna inicjatywa:** plan ograniczenia zuzycia zasobow i uproszczenia domeny jest w `docs/12_RESOURCE_AND_ARCHITECTURE_PLAN.md`. Nie rozszerza zakresu o kolejne serwisy — najpierw stabilizuje import, kategoryzacje i testy.

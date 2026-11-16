@@ -36,6 +36,27 @@ function rowsToObjects(rows: unknown[][]): ParsedImportFile {
   };
 }
 
+/**
+ * Biblioteki parsujace zglaszaja techniczne, angielskie bledy. Uzytkownikowi pokazujemy
+ * jeden zrozumialy komunikat na format, a wlasne (polskie) bledy przepuszczamy dalej.
+ */
+async function readWithFriendlyError<T>(message: string, read: () => T | Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch {
+    throw new Error(message);
+  }
+}
+
+const CSV_READ_ERROR =
+  "Nie udalo sie odczytac pliku CSV. Sprawdz, czy to nieuszkodzony eksport z banku (tekst rozdzielany przecinkami).";
+const XLSX_READ_ERROR =
+  "Nie udalo sie odczytac pliku XLSX. Sprawdz, czy plik nie jest uszkodzony, albo wyeksportuj dane jako CSV.";
+const PDF_READ_ERROR =
+  "Nie udalo sie odczytac pliku PDF. Sprawdz, czy plik nie jest uszkodzony ani zabezpieczony haslem.";
+const OCR_READ_ERROR =
+  "Nie udalo sie rozpoznac tekstu na obrazie. Sprobuj wyrazniejszego zdjecia albo importu CSV/XLSX.";
+
 export async function parseImportFile(file: File): Promise<ParsedImportFile> {
   const extension = file.name.split(".").pop()?.toLowerCase();
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -50,13 +71,17 @@ export async function parseImportFile(file: File): Promise<ParsedImportFile> {
   }
 
   if (extension === "csv") {
-    const rows = parse(buffer, {
-      bom: true,
-      columns: false,
-      relaxColumnCount: true,
-      skipEmptyLines: true,
-      trim: true,
-    }) as unknown[][];
+    const rows = await readWithFriendlyError(
+      CSV_READ_ERROR,
+      () =>
+        parse(buffer, {
+          bom: true,
+          columns: false,
+          relaxColumnCount: true,
+          skipEmptyLines: true,
+          trim: true,
+        }) as unknown[][],
+    );
 
     const zenTable = extractZenCsvTable(rows);
 
@@ -68,7 +93,7 @@ export async function parseImportFile(file: File): Promise<ParsedImportFile> {
   }
 
   if (extension === "xlsx") {
-    const rows = await parseXlsx(buffer);
+    const rows = await readWithFriendlyError(XLSX_READ_ERROR, () => parseXlsx(buffer));
 
     return rowsToObjects(rows);
   }
@@ -289,12 +314,15 @@ async function parseReceiptImage(buffer: Buffer): Promise<ParsedImportFile> {
   const { createWorker } = await import("tesseract.js");
   // Dane jezykowe sa pobierane przy pierwszym uzyciu; trzymamy je w katalogu tymczasowym,
   // bo system plikow kontenera produkcyjnego jest tylko do odczytu.
-  const worker = await createWorker("pol", undefined, { cachePath: tmpdir() });
+  const worker = await readWithFriendlyError(
+    "OCR jest chwilowo niedostepny (nie udalo sie pobrac danych jezykowych). Uzyj importu CSV/XLSX.",
+    () => createWorker("pol", undefined, { cachePath: tmpdir() }),
+  );
 
   try {
     const {
       data: { text },
-    } = await worker.recognize(buffer);
+    } = await readWithFriendlyError(OCR_READ_ERROR, () => worker.recognize(buffer));
     const trimmed = text.trim();
 
     if (!trimmed) {
@@ -316,7 +344,7 @@ async function parsePdf(buffer: Buffer): Promise<ParsedImportFile> {
   const parser = new PDFParse({ data: new Uint8Array(buffer) });
 
   try {
-    const tableResult = await parser.getTable();
+    const tableResult = await readWithFriendlyError(PDF_READ_ERROR, () => parser.getTable());
 
     for (const table of tableResult.mergedTables) {
       if (table.length >= 2) {
@@ -350,7 +378,7 @@ async function parsePdf(buffer: Buffer): Promise<ParsedImportFile> {
       }
     }
 
-    const textResult = await parser.getText();
+    const textResult = await readWithFriendlyError(PDF_READ_ERROR, () => parser.getText());
     const text = textResult.text?.trim() ?? "";
 
     if (!text) {

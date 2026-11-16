@@ -22,7 +22,7 @@ function errorMessage(code?: string) {
   }
 
   if (code === "invalid") {
-    return "Niepoprawny kod. Sprobuj ponownie.";
+    return "Kod jest niepoprawny albo byl juz uzyty. Wpisz aktualny kod z aplikacji.";
   }
 
   return null;

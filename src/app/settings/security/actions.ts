@@ -8,6 +8,7 @@ import {
   disableUserTotp,
   finalizeTotpEnrollment,
   findUserById,
+  markTotpStepUsed,
   updateUserPasswordHash,
   updateUserTotpPendingSecret,
 } from "@/db/users";
@@ -15,7 +16,7 @@ import { getClientIpHash } from "@/lib/client-ip";
 import { isLoginAllowed, recordLoginFailure } from "@/lib/login-rate-limit";
 import { hashPassword, validateNewPassword, verifyPassword } from "@/lib/password";
 import { destroyOtherSessions, requireUser } from "@/lib/session";
-import { generateTotpSecret, verifyTotpToken } from "@/lib/totp-app";
+import { checkTotpToken, generateTotpSecret, verifyTotpToken } from "@/lib/totp-app";
 
 export async function startTotpEnrollmentAction() {
   const user = await requireUser();
@@ -119,7 +120,8 @@ export async function disableTotpAction(formData: FormData) {
     redirect("/settings/security?error=bad_password");
   }
 
-  if (!verifyTotpToken(latest.totpSecret, token)) {
+  // Kod jest jednorazowy: ten sam, ktory posluzyl do logowania, nie wylaczy 2FA.
+  if (!checkTotpToken(latest.totpSecret, token, latest.totpLastUsedStep).valid) {
     recordLoginFailure(latest.login, ipHash);
     recordAuditEvent({
       userId: user.id,
@@ -178,8 +180,11 @@ export async function changePasswordAction(formData: FormData) {
   }
 
   const passwordOk = await verifyPassword(currentPassword, latest.passwordHash);
-  const totpOk =
-    !latest.totpEnabled || !latest.totpSecret || verifyTotpToken(latest.totpSecret, token);
+  const totpCheck =
+    latest.totpEnabled && latest.totpSecret
+      ? checkTotpToken(latest.totpSecret, token, latest.totpLastUsedStep)
+      : null;
+  const totpOk = totpCheck === null || totpCheck.valid;
 
   if (!passwordOk || !totpOk) {
     recordLoginFailure(latest.login, ipHash);
@@ -189,6 +194,10 @@ export async function changePasswordAction(formData: FormData) {
       meta: { reason: passwordOk ? "invalid_token" : "bad_password" },
     });
     redirect(`/settings/security?error=${passwordOk ? "bad_totp_password" : "bad_password"}`);
+  }
+
+  if (totpCheck?.valid) {
+    markTotpStepUsed(user.id, totpCheck.timeStep);
   }
 
   updateUserPasswordHash(user.id, await hashPassword(newPassword));
